@@ -9,14 +9,11 @@
 (local key-binds {})
 
 (fn display-keys-overlay []
-  (set state.osd.data "{\\an4}{\\fnmonospace}{\\fs18}{\\b1}Rewind and seek
-{\\an4}{\\fnmonospace}{\\fs18}{\\b1}r{\\b0} {\\fs18}rewind
-{\\an4}{\\fnmonospace}{\\fs18}{\\b1}b{\\b0} seek backward
-{\\an4}{\\fnmonospace}{\\fs18}{\\b1}f{\\b0} seek forward
-{\\an4}{\\fnmonospace}{\\fs18}{\\b1}O{\\b0} change seek offset\\N\\N
-{\\an4}{\\fnmonospace}{\\fs18}{\\b1}Miscellaneous
-{\\an4}{\\fnmonospace}{\\fs18}{\\b1}s{\\b0} take a screenshot
-{\\an4}{\\fnmonospace}{\\fs18}{\\b1}q{\\b0} quit")
+  (set state.osd.data
+       "{\\an4}{\\fnmonospace}{\\fs18}{\\b1}Rewind and seek{\\b0}                   {\\b1}Other{\\b0}
+{\\an4}{\\fnmonospace}{\\fs22}{\\b1}\\h\\hr{\\b0}{\\fs18} rewind                        {\\fs22}{\\b1}s{\\b0}{\\fs18} take a screenshot
+{\\an4}{\\fnmonospace}{\\fs22}{\\b1}b/f{\\b0}{\\fs18} seek backward/forward         {\\fs22}{\\b1}q{\\b0}{\\fs18} quit
+{\\an4}{\\fnmonospace}{\\fs22}{\\b1}\\h\\hO{\\b0}{\\fs18} change seek offset")
   (state.osd:update))
 
 (fn deactivate []
