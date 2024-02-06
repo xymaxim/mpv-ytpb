@@ -40,7 +40,7 @@
   (mp.commandv :script-message "yp:seek" (.. "-" settings.seek_offset)))
 
 (fn change-seek-offset-key-handler []
-  (input.get {:prompt "Seek offset:"
+  (input.get {:prompt "New seek offset:"
               :default_text settings.seek_offset
               :submit (fn [value]
                         (if (string.find value "[dhms]")

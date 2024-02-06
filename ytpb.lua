@@ -43,7 +43,7 @@ local function change_seek_offset_key_handler()
       return input.log_error("Invalid value, should be [%dd][%Hh][%Mm][%Ss]")
     end
   end
-  return input.get({prompt = "Seek offset:", default_text = settings.seek_offset, submit = _4_})
+  return input.get({prompt = "New seek offset:", default_text = settings.seek_offset, submit = _4_})
 end
 local function activate()
   key_binds["r"] = {"rewind", rewind_key_handler}
