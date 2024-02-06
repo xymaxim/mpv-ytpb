@@ -21,7 +21,12 @@ local function take_screenshot_key_handler()
   return mp.commandv("script-message", "yp:take-screenshot")
 end
 local function rewind_key_handler()
-  return mp.commandv("script-message-to", "console", "type", "script-message yp:rewind ''; keypress ESC", 27)
+  local now = os.date("%Y%m%dT%H%z")
+  local function _3_(value)
+    mp.commandv("script-message", "yp:rewind", value)
+    return input.terminate()
+  end
+  return input.get({prompt = "Rewind date:", default_text = now, cursor_position = 12, submit = _3_})
 end
 local function seek_forward_key_handler()
   return mp.commandv("script-message", "yp:seek", settings.seek_offset)
@@ -30,7 +35,7 @@ local function seek_backward_key_handler()
   return mp.commandv("script-message", "yp:seek", ("-" .. settings.seek_offset))
 end
 local function change_seek_offset_key_handler()
-  local function _3_(value)
+  local function _4_(value)
     if string.find(value, "[dhms]") then
       settings.seek_offset = value
       return input.terminate()
@@ -38,7 +43,7 @@ local function change_seek_offset_key_handler()
       return input.log_error("Invalid value, should be [%dd][%Hh][%Mm][%Ss]")
     end
   end
-  return input.get({prompt = "Seek offset:", default_text = settings.seek_offset, submit = _3_})
+  return input.get({prompt = "Seek offset:", default_text = settings.seek_offset, submit = _4_})
 end
 local function activate()
   key_binds["r"] = {"rewind", rewind_key_handler}
@@ -49,18 +54,18 @@ local function activate()
   key_binds["q"] = {"quit", deactivate}
   do
     local do_and_deactivate
-    local function _5_(func)
-      local function _6_()
+    local function _6_(func)
+      local function _7_()
         func()
         return deactivate()
       end
-      return _6_
+      return _7_
     end
-    do_and_deactivate = _5_
-    for key, _7_ in pairs(key_binds) do
-      local _each_8_ = _7_
-      local name = _each_8_[1]
-      local func = _each_8_[2]
+    do_and_deactivate = _6_
+    for key, _8_ in pairs(key_binds) do
+      local _each_9_ = _8_
+      local name = _each_9_[1]
+      local func = _each_9_[2]
       mp.add_forced_key_binding(key, name, do_and_deactivate(func))
     end
   end

@@ -28,8 +28,13 @@
   (mp.commandv :script-message "yp:take-screenshot"))
 
 (fn rewind-key-handler []
-  (mp.commandv :script-message-to :console :type
-               "script-message yp:rewind ''; keypress ESC" 27))
+  (let [now (os.date "%Y%m%dT%H%z")]
+    (input.get {:prompt "Rewind date:"
+                :default_text now
+                :cursor_position 12
+                :submit (fn [value]
+                          (mp.commandv :script-message "yp:rewind" value)
+                          (input.terminate))})))
 
 (fn seek-forward-key-handler []
   (mp.commandv :script-message "yp:seek" settings.seek_offset))
