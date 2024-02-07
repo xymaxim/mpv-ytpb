@@ -11,12 +11,84 @@
 
 (local key-binds {})
 
+(fn b [value]
+  (string.format "{\\b1}%s{\\b0}" value))
+
+(fn fs [size value]
+  (string.format "{\\fs%s}%s" size value))
+
+(fn render-column [column keys-order]
+  (local right-margin 10)
+  (local main-font-size 18)
+  (local key-font-size (* 1.2 main-font-size))
+  (var rendered-lines [])
+  (var max-key-length 0)
+  (var max-desc-length 0)
+  (each [key desc (pairs column.keys)]
+    (let [key-length (length key)]
+      (if (> key-length max-key-length)
+          (set max-key-length key-length)))
+    (let [desc-length (length desc)]
+      (if (> desc-length max-desc-length)
+          (set max-desc-length desc-length))))
+  (table.insert rendered-lines
+                (string.format "%s %s%s%s"
+                               (fs main-font-size (b column.header))
+                               (fs key-font-size
+                                   (b (string.rep " " max-key-length)))
+                               (fs main-font-size "")
+                               (string.rep " "
+                                           (+ right-margin
+                                              (- max-desc-length
+                                                 (length column.header))))))
+  (var aligned-key nil)
+  (each [_ key (ipairs keys-order)]
+    (let [aligned-key (.. (string.rep "\\h" (- max-key-length (length key)))
+                          key)]
+      (table.insert rendered-lines
+                    (let [desc (. column.keys key)]
+                      (string.format "%s%s%s"
+                                     (fs key-font-size (b aligned-key))
+                                     (fs main-font-size (.. " " desc))
+                                     (string.rep " "
+                                                 (+ right-margin
+                                                    (- max-desc-length
+                                                       (length desc)))))))))
+  rendered-lines)
+
+(fn stack-columns [...]
+  (var lines [])
+  (let [max-column-size (math.max (table.unpack (icollect [_ column (ipairs [...])]
+                                                  (length column))))]
+    (for [i 1 max-column-size]
+      (var line "")
+      (each [_ column (pairs [...])]
+        (set line (.. line
+                      (or (?. column i)
+                          (string.format "{\\alpha&HFF&}%s{\\alpha&H00&}"
+                                         (. column 1))))))
+      (table.insert lines line)))
+  lines)
+
 (fn display-main-overlay []
-  (set state.main-overlay.data
-       "{\\an4}{\\fnmonospace}{\\fs18}{\\b1}Rewind and seek{\\fs22}   {\\fs18}              Mark mode{\\fs22}  {\\fs18}                Other
-{\\an4}{\\fnmonospace}{\\fs22}{\\b1}\\h\\hr{\\b0}{\\fs18} rewind                      {\\fs22}{\\b1}\\h\\hm{\\b0}{\\fs18} toggle mode            {\\fs22}{\\b1}s{\\b0}{\\fs18} take a screenshot
-{\\an4}{\\fnmonospace}{\\fs22}{\\b1}</>{\\b0}{\\fs18} seek backward/forward       {\\fs22}{\\b1}a/b{\\b0}{\\fs18} mark point A/B         {\\fs22}{\\b1}q{\\b0}{\\fs18} quit
-{\\an4}{\\fnmonospace}{\\fs22}{\\b1}\\h\\hO{\\b0}{\\fs18} change seek offset          {\\fs22}{\\b1}A/B{\\b0}{\\fs18} go to point A/B")
+  (local line-tags "{\\an4}{\\fnmonospace}")
+  (local rewind-column {:header "Rewind and seek"
+                        :keys {:r :rewind
+                               :</> "seek backward/forward"
+                               :O "change seek offset"}})
+  (local mark-mode-column
+         {:header "Mark mode"
+          :keys {:m "toggle mode" :a/b "mark point A/B" :A/B "go to point A/B"}})
+  (local other-column {:header :Other :keys {:s "take a screenshot" :q :quit}})
+  (local rewind-column-lines (render-column rewind-column [:r "</>" :O]))
+  (local mark-mode-column-lines (render-column mark-mode-column [:m :a/b :A/B]))
+  (local other-column-lines (render-column other-column [:s :q]))
+  (let [stacked-columns (stack-columns rewind-column-lines
+                                       mark-mode-column-lines other-column-lines)]
+    (set state.main-overlay.data
+         (table.concat (icollect [_ line (ipairs stacked_columns)]
+                         (string.format "{\\an4}{\\fnmonospace}%s" line))
+                       "\\N")))
   (state.main-overlay:update))
 
 (fn deactivate []

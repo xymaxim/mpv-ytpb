@@ -4,15 +4,114 @@ local input = require("mp.input")
 local state = {["main-overlay"] = nil, ["mark-overlay"] = nil, ["marked-points"] = {a = nil, b = nil}, ["mark-mode-enabled?"] = false}
 local settings = {seek_offset = "10m"}
 local key_binds = {}
+local function b(value)
+  return string.format("{\\b1}%s{\\b0}", value)
+end
+local function fs(size, value)
+  return string.format("{\\fs%s}%s", size, value)
+end
+local function render_column(column, keys_order)
+  local right_margin = 10
+  local main_font_size = 18
+  local key_font_size = (1.2 * main_font_size)
+  local rendered_lines = {}
+  local max_key_length = 0
+  local max_desc_length = 0
+  for key, desc in pairs(column.keys) do
+    do
+      local key_length = #key
+      if (key_length > max_key_length) then
+        max_key_length = key_length
+      else
+      end
+    end
+    local desc_length = #desc
+    if (desc_length > max_desc_length) then
+      max_desc_length = desc_length
+    else
+    end
+  end
+  table.insert(rendered_lines, string.format("%s %s%s%s", fs(main_font_size, b(column.header)), fs(key_font_size, b(string.rep(" ", max_key_length))), fs(main_font_size, ""), string.rep(" ", (right_margin + (max_desc_length - #column.header)))))
+  local aligned_key = nil
+  for _, key in ipairs(keys_order) do
+    local aligned_key0 = (string.rep("\\h", (max_key_length - #key)) .. key)
+    local function _3_()
+      local desc = column.keys[key]
+      return string.format("%s%s%s", fs(key_font_size, b(aligned_key0)), fs(main_font_size, (" " .. desc)), string.rep(" ", (right_margin + (max_desc_length - #desc))))
+    end
+    table.insert(rendered_lines, _3_())
+  end
+  return rendered_lines
+end
+local function stack_columns(...)
+  local lines = {}
+  do
+    local max_column_size
+    local function _4_(...)
+      local tbl_18_auto = {}
+      local i_19_auto = 0
+      for _, column in ipairs({...}) do
+        local val_20_auto = #column
+        if (nil ~= val_20_auto) then
+          i_19_auto = (i_19_auto + 1)
+          do end (tbl_18_auto)[i_19_auto] = val_20_auto
+        else
+        end
+      end
+      return tbl_18_auto
+    end
+    max_column_size = math.max(table.unpack(_4_(...)))
+    for i = 1, max_column_size do
+      local line = ""
+      for _, column in pairs({...}) do
+        local function _6_(...)
+          local t_7_ = column
+          if (nil ~= t_7_) then
+            t_7_ = t_7_[i]
+          else
+          end
+          return t_7_
+        end
+        line = (line .. (_6_() or string.format("{\\alpha&HFF&}%s{\\alpha&H00&}", column[1])))
+      end
+      table.insert(lines, line)
+    end
+  end
+  return lines
+end
 local function display_main_overlay()
-  state["main-overlay"].data = "{\\an4}{\\fnmonospace}{\\fs18}{\\b1}Rewind and seek{\\fs22}   {\\fs18}              Mark mode{\\fs22}  {\\fs18}                Other\n{\\an4}{\\fnmonospace}{\\fs22}{\\b1}\\h\\hr{\\b0}{\\fs18} rewind                      {\\fs22}{\\b1}\\h\\hm{\\b0}{\\fs18} toggle mode            {\\fs22}{\\b1}s{\\b0}{\\fs18} take a screenshot\n{\\an4}{\\fnmonospace}{\\fs22}{\\b1}</>{\\b0}{\\fs18} seek backward/forward       {\\fs22}{\\b1}a/b{\\b0}{\\fs18} mark point A/B         {\\fs22}{\\b1}q{\\b0}{\\fs18} quit\n{\\an4}{\\fnmonospace}{\\fs22}{\\b1}\\h\\hO{\\b0}{\\fs18} change seek offset          {\\fs22}{\\b1}A/B{\\b0}{\\fs18} go to point A/B"
+  local line_tags = "{\\an4}{\\fnmonospace}"
+  local rewind_column = {header = "Rewind and seek", keys = {r = "rewind", ["</>"] = "seek backward/forward", O = "change seek offset"}}
+  local mark_mode_column = {header = "Mark mode", keys = {m = "toggle mode", ["a/b"] = "mark point A/B", ["A/B"] = "go to point A/B"}}
+  local other_column = {header = "Other", keys = {s = "take a screenshot", q = "quit"}}
+  local rewind_column_lines = render_column(rewind_column, {"r", "</>", "O"})
+  local mark_mode_column_lines = render_column(mark_mode_column, {"m", "a/b", "A/B"})
+  local other_column_lines = render_column(other_column, {"s", "q"})
+  do
+    local stacked_columns = stack_columns(rewind_column_lines, mark_mode_column_lines, other_column_lines)
+    local _9_
+    do
+      local tbl_18_auto = {}
+      local i_19_auto = 0
+      for _, line in ipairs(stacked_columns) do
+        local val_20_auto = string.format("{\\an4}{\\fnmonospace}%s", line)
+        if (nil ~= val_20_auto) then
+          i_19_auto = (i_19_auto + 1)
+          do end (tbl_18_auto)[i_19_auto] = val_20_auto
+        else
+        end
+      end
+      _9_ = tbl_18_auto
+    end
+    state["main-overlay"].data = table.concat(_9_, "\\N")
+  end
   return (state["main-overlay"]):update()
 end
 local function deactivate()
-  for _, _1_ in pairs(key_binds) do
-    local _each_2_ = _1_
-    local name = _each_2_[1]
-    local _0 = _each_2_[2]
+  for _, _11_ in pairs(key_binds) do
+    local _each_12_ = _11_
+    local name = _each_12_[1]
+    local _0 = _each_12_[2]
     mp.remove_key_binding(name)
   end
   do end (state["main-overlay"]):remove()
@@ -25,11 +124,11 @@ local function deactivate()
 end
 local function rewind_key_handler()
   local now = os.date("%Y%m%dT%H%z")
-  local function _4_(value)
+  local function _14_(value)
     mp.commandv("script-message", "yp:rewind", value)
     return input.terminate()
   end
-  return input.get({prompt = "Rewind date:", default_text = now, cursor_position = 12, submit = _4_})
+  return input.get({prompt = "Rewind date:", default_text = now, cursor_position = 12, submit = _14_})
 end
 local function seek_forward_key_handler()
   return mp.commandv("script-message", "yp:seek", settings.seek_offset)
@@ -38,7 +137,7 @@ local function seek_backward_key_handler()
   return mp.commandv("script-message", "yp:seek", ("-" .. settings.seek_offset))
 end
 local function change_seek_offset_key_handler()
-  local function _5_(value)
+  local function _15_(value)
     if string.find(value, "[dhms]") then
       settings.seek_offset = value
       return input.terminate()
@@ -46,19 +145,19 @@ local function change_seek_offset_key_handler()
       return input.log_error("Invalid value, should be [%dd][%Hh][%Mm][%Ss]")
     end
   end
-  return input.get({prompt = "New seek offset:", default_text = settings.seek_offset, submit = _5_})
+  return input.get({prompt = "New seek offset:", default_text = settings.seek_offset, submit = _15_})
 end
 local function render_mark_overlay()
   local content = "{\\an8}Mark mode\\N"
   for _, point_name in pairs({"a", "b"}) do
     local point_value
     do
-      local t_7_ = state["marked-points"]
-      if (nil ~= t_7_) then
-        t_7_ = t_7_[point_name]
+      local t_17_ = state["marked-points"]
+      if (nil ~= t_17_) then
+        t_17_ = t_17_[point_name]
       else
       end
-      point_value = t_7_
+      point_value = t_17_
     end
     if point_value then
       content = (content .. string.format("{\\an8}{\\fnmonospace}{\\fs28}%s {\\fs28}%s\\N", string.upper(point_name), point_value))
@@ -107,20 +206,20 @@ local function activate()
   key_binds[">"] = {"seek-forward", seek_forward_key_handler}
   key_binds["O"] = {"change-seek-offset", change_seek_offset_key_handler}
   key_binds["m"] = {"toggle-mark-mode", toggle_mark_mode}
-  local function _13_()
+  local function _23_()
     return mark_point("a")
   end
-  key_binds["a"] = {"mark-point-a", _13_}
-  local function _14_()
+  key_binds["a"] = {"mark-point-a", _23_}
+  local function _24_()
     return mark_point("b")
   end
-  key_binds["b"] = {"mark-point-b", _14_}
+  key_binds["b"] = {"mark-point-b", _24_}
   key_binds["s"] = {"take-screenshot", take_screenshot_key_handler}
   key_binds["q"] = {"quit", deactivate}
-  for key, _15_ in pairs(key_binds) do
-    local _each_16_ = _15_
-    local name = _each_16_[1]
-    local func = _each_16_[2]
+  for key, _25_ in pairs(key_binds) do
+    local _each_26_ = _25_
+    local name = _each_26_[1]
+    local func = _each_26_[2]
     mp.add_forced_key_binding(key, name, func)
   end
   state["main-overlay"] = mp.create_osd_overlay("ass-events")
