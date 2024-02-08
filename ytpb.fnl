@@ -80,10 +80,10 @@
                                :O "change seek offset"}})
   (local mark-mode-column
          {:header "Mark mode"
-          :keys {:m "mark new point" :e "edit point" :A/B "go to point A/B"}})
+          :keys {:m "mark new point" :e "edit point" :a/b "go to point A/B"}})
   (local other-column {:header :Other :keys {:s "take a screenshot" :q :quit}})
   (local rewind-column-lines (render-column rewind-column [:r "</>" :O]))
-  (local mark-mode-column-lines (render-column mark-mode-column [:m :e :A/B]))
+  (local mark-mode-column-lines (render-column mark-mode-column [:m :e :a/b]))
   (local other-column-lines (render-column other-column [:s :q]))
   (let [stacked-columns (stack-columns rewind-column-lines
                                        mark-mode-column-lines other-column-lines)]
@@ -192,8 +192,8 @@
   (tset key-binds :O [:change-seek-offset change-seek-offset-key-handler])
   (tset key-binds :m [:mark-new-point mark-new-point])
   (tset key-binds :e [:edit-point edit-point])
-  (tset key-binds :A [:go-to-point-A (fn [] (go-to-point 1))])
-  (tset key-binds :B [:go-to-point-B (fn [] (go-to-point 2))])
+  (tset key-binds :a [:go-to-point-A (fn [] (go-to-point 1))])
+  (tset key-binds :b [:go-to-point-B (fn [] (go-to-point 2))])
   (tset key-binds :s [:take-screenshot take-screenshot-key-handler])
   (tset key-binds :q [:quit deactivate])
   (each [key [name func] (pairs key-binds)]

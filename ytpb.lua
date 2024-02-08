@@ -82,10 +82,10 @@ end
 local function display_main_overlay()
   local line_tags = "{\\an4}{\\fnmonospace}"
   local rewind_column = {header = "Rewind and seek", keys = {r = "rewind", ["</>"] = "seek backward/forward", O = "change seek offset"}}
-  local mark_mode_column = {header = "Mark mode", keys = {m = "mark new point", e = "edit point", ["A/B"] = "go to point A/B"}}
+  local mark_mode_column = {header = "Mark mode", keys = {m = "mark new point", e = "edit point", ["a/b"] = "go to point A/B"}}
   local other_column = {header = "Other", keys = {s = "take a screenshot", q = "quit"}}
   local rewind_column_lines = render_column(rewind_column, {"r", "</>", "O"})
-  local mark_mode_column_lines = render_column(mark_mode_column, {"m", "e", "A/B"})
+  local mark_mode_column_lines = render_column(mark_mode_column, {"m", "e", "a/b"})
   local other_column_lines = render_column(other_column, {"s", "q"})
   do
     local stacked_columns = stack_columns(rewind_column_lines, mark_mode_column_lines, other_column_lines)
@@ -239,11 +239,11 @@ local function activate()
   local function _26_()
     return go_to_point(1)
   end
-  key_binds["A"] = {"go-to-point-A", _26_}
+  key_binds["a"] = {"go-to-point-A", _26_}
   local function _27_()
     return go_to_point(2)
   end
-  key_binds["B"] = {"go-to-point-B", _27_}
+  key_binds["b"] = {"go-to-point-B", _27_}
   key_binds["s"] = {"take-screenshot", take_screenshot_key_handler}
   key_binds["q"] = {"quit", deactivate}
   for key, _28_ in pairs(key_binds) do
