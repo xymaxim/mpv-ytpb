@@ -208,6 +208,14 @@ local function mark_new_point()
   end
   return display_mark_overlay()
 end
+local function edit_point()
+  do
+    local time_pos = tonumber(mp.get_property("time-pos"))
+    local current_point = state["marked-points"][state["current-mark"]]
+    current_point.value = time_pos
+  end
+  return display_mark_overlay()
+end
 local function go_to_point(index)
   mp.set_property_native("pause", true)
   mp.commandv("seek", tostring(state["marked-points"][index].value), "absolute")
@@ -227,7 +235,7 @@ local function activate()
   key_binds[">"] = {"seek-forward", seek_forward_key_handler}
   key_binds["O"] = {"change-seek-offset", change_seek_offset_key_handler}
   key_binds["m"] = {"mark-new-point", mark_new_point}
-  key_binds["e"] = {"edit-point", __fnl_global__edit_2dpoint}
+  key_binds["e"] = {"edit-point", edit_point}
   local function _26_()
     return go_to_point(1)
   end

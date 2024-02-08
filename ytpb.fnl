@@ -166,6 +166,12 @@
             (set state.current-mark 1)))))
   (display-mark-overlay))
 
+(fn edit-point []
+  (let [time-pos (tonumber (mp.get_property :time-pos))
+        current-point (. state.marked-points state.current-mark)]
+    (set current-point.value time-pos))
+  (display-mark-overlay))
+
 (fn go-to-point [index]
   (mp.set_property_native :pause true)
   (mp.commandv :seek (tostring (. (. state.marked-points index) :value))
