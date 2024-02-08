@@ -168,8 +168,15 @@
 
 (fn edit-point []
   (let [time-pos (tonumber (mp.get_property :time-pos))
-        current-point (. state.marked-points state.current-mark)]
-    (set current-point.value time-pos))
+        new-point {:value time-pos :mpd state.current-mpd}]
+    (tset state.marked-points state.current-mark new-point)
+    (let [(a b) (table.unpack state.marked-points)]
+      (if (and b (> a.value b.value))
+          (do
+            (set state.marked-points [b a])
+            (if (= time-pos b.value)
+                (set state.current-mark 1)
+                (set state.current-mark 2))))))
   (display-mark-overlay))
 
 (fn go-to-point [index]

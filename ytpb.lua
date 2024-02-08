@@ -211,8 +211,18 @@ end
 local function edit_point()
   do
     local time_pos = tonumber(mp.get_property("time-pos"))
-    local current_point = state["marked-points"][state["current-mark"]]
-    current_point.value = time_pos
+    local new_point = {value = time_pos, mpd = state["current-mpd"]}
+    state["marked-points"][state["current-mark"]] = new_point
+    local a, b0 = table.unpack(state["marked-points"])
+    if (b0 and (a.value > b0.value)) then
+      state["marked-points"] = {b0, a}
+      if (time_pos == b0.value) then
+        state["current-mark"] = 1
+      else
+        state["current-mark"] = 2
+      end
+    else
+    end
   end
   return display_mark_overlay()
 end
@@ -236,20 +246,20 @@ local function activate()
   key_binds["O"] = {"change-seek-offset", change_seek_offset_key_handler}
   key_binds["m"] = {"mark-new-point", mark_new_point}
   key_binds["e"] = {"edit-point", edit_point}
-  local function _26_()
+  local function _28_()
     return go_to_point(1)
   end
-  key_binds["a"] = {"go-to-point-A", _26_}
-  local function _27_()
+  key_binds["a"] = {"go-to-point-A", _28_}
+  local function _29_()
     return go_to_point(2)
   end
-  key_binds["b"] = {"go-to-point-B", _27_}
+  key_binds["b"] = {"go-to-point-B", _29_}
   key_binds["s"] = {"take-screenshot", take_screenshot_key_handler}
   key_binds["q"] = {"quit", deactivate}
-  for key, _28_ in pairs(key_binds) do
-    local _each_29_ = _28_
-    local name = _each_29_[1]
-    local func = _each_29_[2]
+  for key, _30_ in pairs(key_binds) do
+    local _each_31_ = _30_
+    local name = _each_31_[1]
+    local func = _each_31_[2]
     mp.add_forced_key_binding(key, name, func)
   end
   state["main-overlay"] = mp.create_osd_overlay("ass-events")
