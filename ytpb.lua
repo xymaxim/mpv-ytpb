@@ -182,6 +182,10 @@ local function mark_new_point()
   state["mark-overlay"].data = render_mark_overlay()
   return (state["mark-overlay"]):update()
 end
+local function go_to_point(index)
+  mp.commandv("seek", tostring(state["marked-points"][index]), "absolute")
+  return mp.set_property_native("pause", true)
+end
 local function take_screenshot_key_handler()
   return mp.commandv("script-message", "yp:take-screenshot")
 end
@@ -191,12 +195,20 @@ local function activate()
   key_binds[">"] = {"seek-forward", seek_forward_key_handler}
   key_binds["O"] = {"change-seek-offset", change_seek_offset_key_handler}
   key_binds["m"] = {"mark-new-point", mark_new_point}
+  local function _20_()
+    return go_to_point(1)
+  end
+  key_binds["A"] = {"go-to-point-A", _20_}
+  local function _21_()
+    return go_to_point(2)
+  end
+  key_binds["B"] = {"go-to-point-B", _21_}
   key_binds["s"] = {"take-screenshot", take_screenshot_key_handler}
   key_binds["q"] = {"quit", deactivate}
-  for key, _20_ in pairs(key_binds) do
-    local _each_21_ = _20_
-    local name = _each_21_[1]
-    local func = _each_21_[2]
+  for key, _22_ in pairs(key_binds) do
+    local _each_23_ = _22_
+    local name = _each_23_[1]
+    local func = _each_23_[2]
     mp.add_forced_key_binding(key, name, func)
   end
   state["main-overlay"] = mp.create_osd_overlay("ass-events")

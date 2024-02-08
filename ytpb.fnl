@@ -151,6 +151,10 @@
   (set state.mark-overlay.data (render-mark-overlay))
   (state.mark-overlay:update))
 
+(fn go-to-point [index]
+  (mp.commandv :seek (tostring (. state.marked-points index)) :absolute)
+  (mp.set_property_native :pause true))
+
 (fn take-screenshot-key-handler []
   (mp.commandv :script-message "yp:take-screenshot"))
 
@@ -160,6 +164,8 @@
   (tset key-binds ">" [:seek-forward seek-forward-key-handler])
   (tset key-binds :O [:change-seek-offset change-seek-offset-key-handler])
   (tset key-binds :m [:mark-new-point mark-new-point])
+  (tset key-binds :A [:go-to-point-A (fn [] (go-to-point 1))])
+  (tset key-binds :B [:go-to-point-B (fn [] (go-to-point 2))])
   (tset key-binds :s [:take-screenshot take-screenshot-key-handler])
   (tset key-binds :q [:quit deactivate])
   (each [key [name func] (pairs key-binds)]
