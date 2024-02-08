@@ -1,7 +1,7 @@
 local mp = require("mp")
 local options = require("mp.options")
 local input = require("mp.input")
-local state = {["main-overlay"] = nil, ["mark-overlay"] = nil, ["marked-points"] = {a = nil, b = nil}, ["mark-mode-enabled?"] = false}
+local state = {["main-overlay"] = nil, ["mark-overlay"] = nil, ["marked-points"] = {}, ["mark-mode-enabled?"] = false}
 local settings = {seek_offset = "10m"}
 local key_binds = {}
 local function b(value)
@@ -82,10 +82,10 @@ end
 local function display_main_overlay()
   local line_tags = "{\\an4}{\\fnmonospace}"
   local rewind_column = {header = "Rewind and seek", keys = {r = "rewind", ["</>"] = "seek backward/forward", O = "change seek offset"}}
-  local mark_mode_column = {header = "Mark mode", keys = {m = "toggle mode", ["a/b"] = "mark point A/B", ["A/B"] = "go to point A/B"}}
+  local mark_mode_column = {header = "Mark mode", keys = {m = "mark new point", e = "edit point", ["A/B"] = "go to point A/B"}}
   local other_column = {header = "Other", keys = {s = "take a screenshot", q = "quit"}}
   local rewind_column_lines = render_column(rewind_column, {"r", "</>", "O"})
-  local mark_mode_column_lines = render_column(mark_mode_column, {"m", "a/b", "A/B"})
+  local mark_mode_column_lines = render_column(mark_mode_column, {"m", "e", "A/B"})
   local other_column_lines = render_column(other_column, {"s", "q"})
   do
     local stacked_columns = stack_columns(rewind_column_lines, mark_mode_column_lines, other_column_lines)
@@ -148,54 +148,39 @@ local function change_seek_offset_key_handler()
   return input.get({prompt = "New seek offset:", default_text = settings.seek_offset, submit = _15_})
 end
 local function render_mark_overlay()
+  local point_labels = {"A", "B"}
   local content = "{\\an8}Mark mode\\N"
-  for _, point_name in pairs({"a", "b"}) do
-    local point_value
-    do
-      local t_17_ = state["marked-points"]
-      if (nil ~= t_17_) then
-        t_17_ = t_17_[point_name]
-      else
-      end
-      point_value = t_17_
-    end
-    if point_value then
-      content = (content .. string.format("{\\an8}{\\fnmonospace}{\\fs28}%s {\\fs28}%s\\N", string.upper(point_name), point_value))
-    else
-    end
+  table.sort(state["marked-points"])
+  for i, point in ipairs(state["marked-points"]) do
+    content = (content .. string.format("{\\an8}{\\fnmonospace}%s %s\\N", fs(28, point_labels[i]), fs(28, point)))
   end
   return content
 end
-local function display_mark_overlay()
-  state["mark-overlay"].data = render_mark_overlay()
-  return (state["mark-overlay"]):update()
-end
-local function toggle_mark_mode()
-  state["mark-mode-enabled?"] = not state["mark-mode-enabled?"]
+local function activate_mark_mode()
   if (nil == state["mark-overlay"]) then
     state["mark-overlay"] = mp.create_osd_overlay("ass-events")
   else
   end
-  if state["mark-mode-enabled?"] then
-    display_mark_overlay()
-  else
-    do end (state["mark-overlay"]):remove()
-  end
-  for point_name, _ in pairs(state["marked-points"]) do
-    state["marked-points"][point_name] = nil
-  end
+  state["mark-mode-enabled?"] = true
   return nil
 end
-local function mark_point(point_name)
+local function mark_new_point()
   if not state["mark-mode-enabled?"] then
-    toggle_mark_mode()
+    activate_mark_mode()
   else
   end
   do
     local time_pos = mp.get_property("time-pos")
-    do end (state["marked-points"])[point_name] = time_pos
+    if (#state["marked-points"] == 2) then
+      for key, _ in ipairs(state["marked-points"]) do
+        state["marked-points"][key] = nil
+      end
+    else
+    end
+    table.insert(state["marked-points"], time_pos)
   end
-  return display_mark_overlay()
+  state["mark-overlay"].data = render_mark_overlay()
+  return (state["mark-overlay"]):update()
 end
 local function take_screenshot_key_handler()
   return mp.commandv("script-message", "yp:take-screenshot")
@@ -205,21 +190,13 @@ local function activate()
   key_binds["<"] = {"seek-backward", seek_backward_key_handler}
   key_binds[">"] = {"seek-forward", seek_forward_key_handler}
   key_binds["O"] = {"change-seek-offset", change_seek_offset_key_handler}
-  key_binds["m"] = {"toggle-mark-mode", toggle_mark_mode}
-  local function _23_()
-    return mark_point("a")
-  end
-  key_binds["a"] = {"mark-point-a", _23_}
-  local function _24_()
-    return mark_point("b")
-  end
-  key_binds["b"] = {"mark-point-b", _24_}
+  key_binds["m"] = {"mark-new-point", mark_new_point}
   key_binds["s"] = {"take-screenshot", take_screenshot_key_handler}
   key_binds["q"] = {"quit", deactivate}
-  for key, _25_ in pairs(key_binds) do
-    local _each_26_ = _25_
-    local name = _each_26_[1]
-    local func = _each_26_[2]
+  for key, _20_ in pairs(key_binds) do
+    local _each_21_ = _20_
+    local name = _each_21_[1]
+    local func = _each_21_[2]
     mp.add_forced_key_binding(key, name, func)
   end
   state["main-overlay"] = mp.create_osd_overlay("ass-events")

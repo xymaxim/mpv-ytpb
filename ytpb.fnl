@@ -5,7 +5,7 @@
 (local state {:main-overlay nil
               :mark-overlay nil
               :mark-mode-enabled? false
-              :marked-points {:a nil :b nil}})
+              :marked-points []})
 
 (local settings {:seek_offset :10m})
 
@@ -78,10 +78,10 @@
                                :O "change seek offset"}})
   (local mark-mode-column
          {:header "Mark mode"
-          :keys {:m "toggle mode" :a/b "mark point A/B" :A/B "go to point A/B"}})
+          :keys {:m "mark new point" :e "edit point" :A/B "go to point A/B"}})
   (local other-column {:header :Other :keys {:s "take a screenshot" :q :quit}})
   (local rewind-column-lines (render-column rewind-column [:r "</>" :O]))
-  (local mark-mode-column-lines (render-column mark-mode-column [:m :a/b :A/B]))
+  (local mark-mode-column-lines (render-column mark-mode-column [:m :e :A/B]))
   (local other-column-lines (render-column other-column [:s :q]))
   (let [stacked-columns (stack-columns rewind-column-lines
                                        mark-mode-column-lines other-column-lines)]
@@ -125,36 +125,31 @@
                             (input.log_error "Invalid value, should be [%dd][%Hh][%Mm][%Ss]")))}))
 
 (fn render-mark-overlay []
+  (local point-labels [:A :B])
   (var content "{\\an8}Mark mode\\N")
-  (each [_ point-name (pairs [:a :b])]
-    (let [point-value (?. state.marked-points point-name)]
-      (if point-value
-          (set content
-               (.. content
-                   (string.format "{\\an8}{\\fnmonospace}{\\fs28}%s {\\fs28}%s\\N"
-                                  (string.upper point-name) point-value))))))
+  (table.sort state.marked-points)
+  (each [i point (ipairs state.marked-points)]
+    (set content
+         (.. content
+             (string.format "{\\an8}{\\fnmonospace}%s %s\\N"
+                            (fs 28 (. point-labels i)) (fs 28 point)))))
   content)
 
-(fn display-mark-overlay []
-  (set state.mark-overlay.data (render-mark-overlay))
-  (state.mark-overlay:update))
-
-(fn toggle-mark-mode []
-  (set state.mark-mode-enabled? (not state.mark-mode-enabled?))
+(fn activate-mark-mode []
   (if (= nil state.mark-overlay)
       (set state.mark-overlay (mp.create_osd_overlay :ass-events)))
-  (if state.mark-mode-enabled?
-      (display-mark-overlay)
-      (state.mark-overlay:remove))
-  (each [point-name _ (pairs state.marked-points)]
-    (tset state.marked-points point-name nil)))
+  (set state.mark-mode-enabled? true))
 
-(fn mark-point [point-name]
+(fn mark-new-point []
   (if (not state.mark-mode-enabled?)
-      (toggle-mark-mode))
+      (activate-mark-mode))
   (let [time-pos (mp.get_property :time-pos)]
-    (tset state.marked-points point-name time-pos))
-  (display-mark-overlay))
+    (if (= (length state.marked-points) 2)
+        (each [key _ (ipairs state.marked-points)]
+          (tset state.marked-points key nil)))
+    (table.insert state.marked-points time-pos))
+  (set state.mark-overlay.data (render-mark-overlay))
+  (state.mark-overlay:update))
 
 (fn take-screenshot-key-handler []
   (mp.commandv :script-message "yp:take-screenshot"))
@@ -164,9 +159,7 @@
   (tset key-binds "<" [:seek-backward seek-backward-key-handler])
   (tset key-binds ">" [:seek-forward seek-forward-key-handler])
   (tset key-binds :O [:change-seek-offset change-seek-offset-key-handler])
-  (tset key-binds :m [:toggle-mark-mode toggle-mark-mode])
-  (tset key-binds :a [:mark-point-a (fn [] (mark-point :a))])
-  (tset key-binds :b [:mark-point-b (fn [] (mark-point :b))])
+  (tset key-binds :m [:mark-new-point mark-new-point])
   (tset key-binds :s [:take-screenshot take-screenshot-key-handler])
   (tset key-binds :q [:quit deactivate])
   (each [key [name func] (pairs key-binds)]
