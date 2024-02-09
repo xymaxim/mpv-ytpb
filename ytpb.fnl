@@ -152,26 +152,29 @@
   (if (not state.mark-mode-enabled?)
       (activate-mark-mode))
   (let [time-pos (tonumber (mp.get_property :time-pos))
-        prev-point (. state.marked-points (length state.marked-points))]
-    (if (= (length state.marked-points) 2)
-        (each [key _ (ipairs state.marked-points)]
-          (tset state.marked-points key nil)))
-    (let [new-point {:value time-pos :mpd state.current-mpd}]
-      (if (>= time-pos (or (?. prev-point :value) 0))
-          (do
-            (table.insert state.marked-points new-point)
-            (set state.current-mark (length state.marked-points)))
-          (do
-            (table.insert state.marked-points 1 new-point)
-            (set state.current-mark 1)
-            (mp.commandv :show-text "Points swapped")))))
+        new-point {:value time-pos :mpd state.current-mpd}]
+    (case state.marked-points
+      (where (or [nil] [a b])) (do
+                                 (tset state.marked-points 1 new-point)
+                                 (set state.current-mark 1)
+                                 (if b
+                                     (tset state.marked-points 2 nil)))
+      [a nil] (do
+                (if (>= time-pos a.value)
+                    (do
+                      (tset state.marked-points 2 new-point)
+                      (set state.current-mark 2))
+                    (do
+                      (set state.marked-points [new-point a])
+                      (set state.current-mark 1)
+                      (mp.commandv :show-text "Points swapped"))))))
   (display-mark-overlay))
 
 (fn edit-point []
   (let [time-pos (tonumber (mp.get_property :time-pos))
         new-point {:value time-pos :mpd state.current-mpd}]
     (tset state.marked-points state.current-mark new-point)
-    (let [(a b) (table.unpack state.marked-points)]
+    (let [[a b] state.marked-points]
       (if (and b (> a.value b.value))
           (do
             (set state.marked-points [b a])
@@ -203,9 +206,10 @@
   (tset key-binds :m [:mark-new-point mark-new-point])
   (tset key-binds :e
         [:edit-point
-         #(if state.mark-mode-enabled?
-              (edit-point)
-              (mp.commandv :show-text "No marked points"))])
+         (fn []
+           (if state.mark-mode-enabled?
+               (edit-point)
+               (mp.commandv :show-text "No marked points")))])
   (tset key-binds :a [:go-to-point-A #(go-to-point 1)])
   (tset key-binds :b [:go-to-point-B #(go-to-point 2)])
   (tset key-binds :s [:take-screenshot take-screenshot-key-handler])

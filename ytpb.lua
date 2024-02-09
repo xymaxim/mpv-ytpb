@@ -182,29 +182,26 @@ local function mark_new_point()
   end
   do
     local time_pos = tonumber(mp.get_property("time-pos"))
-    local prev_point = state["marked-points"][#state["marked-points"]]
-    if (#state["marked-points"] == 2) then
-      for key, _ in ipairs(state["marked-points"]) do
-        state["marked-points"][key] = nil
-      end
-    else
-    end
     local new_point = {value = time_pos, mpd = state["current-mpd"]}
-    local function _22_(...)
-      local t_23_ = prev_point
-      if (nil ~= t_23_) then
-        t_23_ = t_23_.value
+    local _21_ = state["marked-points"]
+    if (((_G.type(_21_) == "table") and (_21_[1] == nil)) or ((_G.type(_21_) == "table") and (nil ~= _21_[1]) and (nil ~= _21_[2]))) then
+      state["marked-points"][1] = new_point
+      state["current-mark"] = 1
+      if b then
+        state["marked-points"][2] = nil
       else
       end
-      return t_23_
-    end
-    if (time_pos >= (_22_() or 0)) then
-      table.insert(state["marked-points"], new_point)
-      state["current-mark"] = #state["marked-points"]
+    elseif ((_G.type(_21_) == "table") and (nil ~= _21_[1]) and (_21_[2] == nil)) then
+      local a = _21_[1]
+      if (time_pos >= a.value) then
+        state["marked-points"][2] = new_point
+        state["current-mark"] = 2
+      else
+        state["marked-points"] = {new_point, a}
+        state["current-mark"] = 1
+        mp.commandv("show-text", "Points swapped")
+      end
     else
-      table.insert(state["marked-points"], 1, new_point)
-      state["current-mark"] = 1
-      mp.commandv("show-text", "Points swapped")
     end
   end
   return display_mark_overlay()
@@ -214,7 +211,9 @@ local function edit_point()
     local time_pos = tonumber(mp.get_property("time-pos"))
     local new_point = {value = time_pos, mpd = state["current-mpd"]}
     state["marked-points"][state["current-mark"]] = new_point
-    local a, b0 = table.unpack(state["marked-points"])
+    local _let_25_ = state["marked-points"]
+    local a = _let_25_[1]
+    local b0 = _let_25_[2]
     if (b0 and (a.value > b0.value)) then
       state["marked-points"] = {b0, a}
       if (time_pos == b0.value) then
