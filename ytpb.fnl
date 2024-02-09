@@ -156,14 +156,15 @@
     (if (= (length state.marked-points) 2)
         (each [key _ (ipairs state.marked-points)]
           (tset state.marked-points key nil)))
-    (let [point {:value time-pos :mpd state.current-mpd}]
+    (let [new-point {:value time-pos :mpd state.current-mpd}]
       (if (>= time-pos (or (?. prev-point :value) 0))
           (do
-            (table.insert state.marked-points point)
+            (table.insert state.marked-points new-point)
             (set state.current-mark (length state.marked-points)))
           (do
-            (table.insert state.marked-points 1 point)
-            (set state.current-mark 1)))))
+            (table.insert state.marked-points 1 new-point)
+            (set state.current-mark 1)
+            (mp.commandv :show-text "Points swapped")))))
   (display-mark-overlay))
 
 (fn edit-point []
@@ -174,17 +175,19 @@
       (if (and b (> a.value b.value))
           (do
             (set state.marked-points [b a])
-            (if (= time-pos b.value)
-                (set state.current-mark 1)
-                (set state.current-mark 2))))))
+            (set state.current-mark (if (= time-pos b.value) 1 2))
+            (mp.commandv :show-text "Points swapped")))))
   (display-mark-overlay))
 
 (fn go-to-point [index]
-  (mp.set_property_native :pause true)
-  (mp.commandv :seek (tostring (. (. state.marked-points index) :value))
-               :absolute)
-  (set state.current-mark index)
-  (display-mark-overlay))
+  (if (?. state.marked-points index)
+      (do
+        (mp.set_property_native :pause true)
+        (mp.commandv :seek (tostring (. (. state.marked-points index) :value))
+                     :absolute)
+        (set state.current-mark index)
+        (display-mark-overlay))
+      (mp.commandv :show-text "Point not marked")))
 
 (fn take-screenshot-key-handler []
   (mp.commandv :script-message "yp:take-screenshot"))
@@ -198,9 +201,13 @@
   (tset key-binds ">" [:seek-forward seek-forward-key-handler])
   (tset key-binds :O [:change-seek-offset change-seek-offset-key-handler])
   (tset key-binds :m [:mark-new-point mark-new-point])
-  (tset key-binds :e [:edit-point edit-point])
-  (tset key-binds :a [:go-to-point-A (fn [] (go-to-point 1))])
-  (tset key-binds :b [:go-to-point-B (fn [] (go-to-point 2))])
+  (tset key-binds :e
+        [:edit-point
+         #(if state.mark-mode-enabled?
+              (edit-point)
+              (mp.commandv :show-text "No marked points"))])
+  (tset key-binds :a [:go-to-point-A #(go-to-point 1)])
+  (tset key-binds :b [:go-to-point-B #(go-to-point 2)])
   (tset key-binds :s [:take-screenshot take-screenshot-key-handler])
   (tset key-binds :q [:quit deactivate])
   (each [key [name func] (pairs key-binds)]
