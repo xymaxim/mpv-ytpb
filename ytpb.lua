@@ -1,9 +1,15 @@
 local mp = require("mp")
 local options = require("mp.options")
 local input = require("mp.input")
-local state = {["current-mpd"] = nil, ["main-overlay"] = nil, ["mark-overlay"] = nil, ["marked-points"] = {}, ["current-mark"] = nil, ["activated?"] = false, ["mark-mode-enabled?"] = false}
+local state = {["current-mpd"] = nil, ["current-start-time"] = nil, ["main-overlay"] = nil, ["mark-overlay"] = nil, ["marked-points"] = {}, ["current-mark"] = nil, ["activated?"] = false, ["mark-mode-enabled?"] = false}
 local settings = {seek_offset = "10m"}
 local key_binds = {}
+local function parse_mpd_start_time(content)
+  local _, _0, start_time_str = content:find("availabilityStartTime=\"(.+)\"")
+  local date_pattern = "(%d+)-(%d+)-(%d+)T(%d+):(%d+):(%d+)+00:00"
+  local year, month, day, hour, min, sec = string.match(start_time_str, date_pattern)
+  return os.time({year = year, month = month, day = day, hour = hour, min = min, sec = sec})
+end
 local function b(value)
   return string.format("{\\b1}%s{\\b0}", value)
 end
@@ -245,16 +251,23 @@ local function take_screenshot_key_handler()
 end
 local function update_current_mpd()
   state["current-mpd"] = {path = mp.get_property("path")}
-  return nil
+  local _29_ = io.open(state["current-mpd"].path)
+  if (nil ~= _29_) then
+    local f = _29_
+    state["current-start-time"] = parse_mpd_start_time(f:read("*all"))
+    return f:close()
+  else
+    return nil
+  end
 end
 local function deactivate()
   state["activated?"] = false
   disable_mark_mode()
   do end (state["main-overlay"]):remove()
-  for _, _29_ in pairs(key_binds) do
-    local _each_30_ = _29_
-    local name = _each_30_[1]
-    local _0 = _each_30_[2]
+  for _, _31_ in pairs(key_binds) do
+    local _each_32_ = _31_
+    local name = _each_32_[1]
+    local _0 = _each_32_[2]
     mp.remove_key_binding(name)
   end
   return nil
@@ -266,39 +279,39 @@ local function activate()
   key_binds[">"] = {"seek-forward", seek_forward_key_handler}
   key_binds["O"] = {"change-seek-offset", change_seek_offset_key_handler}
   key_binds["m"] = {"mark-new-point", mark_new_point}
-  local function _31_()
+  local function _33_()
     if state["mark-mode-enabled?"] then
       return edit_point()
     else
       return mp.commandv("show-text", "No marked points")
     end
   end
-  key_binds["e"] = {"edit-point", _31_}
-  local function _33_()
+  key_binds["e"] = {"edit-point", _33_}
+  local function _35_()
     return go_to_point(1)
   end
-  key_binds["a"] = {"go-to-point-A", _33_}
-  local function _34_()
+  key_binds["a"] = {"go-to-point-A", _35_}
+  local function _36_()
     return go_to_point(2)
   end
-  key_binds["b"] = {"go-to-point-B", _34_}
+  key_binds["b"] = {"go-to-point-B", _36_}
   key_binds["s"] = {"take-screenshot", take_screenshot_key_handler}
   key_binds["q"] = {"quit", deactivate}
-  for key, _35_ in pairs(key_binds) do
-    local _each_36_ = _35_
-    local name = _each_36_[1]
-    local func = _each_36_[2]
+  for key, _37_ in pairs(key_binds) do
+    local _each_38_ = _37_
+    local name = _each_38_[1]
+    local func = _each_38_[2]
     mp.add_forced_key_binding(key, name, func)
   end
   state["main-overlay"] = mp.create_osd_overlay("ass-events")
   return display_main_overlay()
 end
-local function _37_()
+local function _39_()
   if not state["activated?"] then
     return activate()
   else
     return nil
   end
 end
-mp.add_forced_key_binding("Ctrl+p", "activate", _37_)
+mp.add_forced_key_binding("Ctrl+p", "activate", _39_)
 return mp.add_hook("on_load", 50, update_current_mpd)

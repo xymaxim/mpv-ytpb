@@ -3,6 +3,7 @@
 (local input (require :mp.input))
 
 (local state {:current-mpd nil
+              :current-start-time nil
               :activated? false
               :main-overlay nil
               :mark-mode-enabled? false
@@ -13,6 +14,12 @@
 (local settings {:seek_offset :10m})
 
 (local key-binds {})
+
+(fn parse-mpd-start-time [content]
+  (let [(_ _ start-time-str) (content:find "availabilityStartTime=\"(.+)\"")
+        date-pattern "(%d+)-(%d+)-(%d+)T(%d+):(%d+):(%d+)+00:00"
+        (year month day hour min sec) (string.match start-time-str date-pattern)]
+    (os.time {: year : month : day : hour : min : sec})))
 
 (fn b [value]
   (string.format "{\\b1}%s{\\b0}" value))
@@ -197,7 +204,12 @@
   (mp.commandv :script-message "yp:take-screenshot"))
 
 (fn update-current-mpd []
-  (tset state :current-mpd {:path (mp.get_property :path)}))
+  (tset state :current-mpd {:path (mp.get_property :path)})
+  (case (io.open state.current-mpd.path)
+    f (do
+        (set state.current-start-time
+             (parse-mpd-start-time (f:read :*all)))
+        (f:close))))
 
 (fn deactivate []
   (set state.activated? false)
