@@ -3,9 +3,10 @@
 (local input (require :mp.input))
 
 (local state {:current-mpd nil
+              :activated? false
               :main-overlay nil
-              :mark-overlay nil
               :mark-mode-enabled? false
+              :mark-overlay nil
               :marked-points []
               :current-mark nil})
 
@@ -18,6 +19,78 @@
 
 (fn fs [size value]
   (string.format "{\\fs%s}%s" size value))
+
+(fn enable-mark-mode []
+  (if (= nil state.mark-overlay)
+      (set state.mark-overlay (mp.create_osd_overlay :ass-events)))
+  (set state.mark-mode-enabled? true))
+
+(fn disable-mark-mode []
+  (set state.mark-mode-enabled? false)
+  (set state.marked-points [])
+  (if (not= nil state.mark-overlay)
+      (state.mark-overlay:remove)))
+
+(fn render-mark-overlay []
+  (local point-labels [:A :B])
+  (var content "{\\an8}Mark mode\\N")
+  (each [i point (ipairs state.marked-points)]
+    (let [point-label (string.format (if (= i state.current-mark) "(%s)"
+                                         "\\h%s\\h")
+                                     (. point-labels i))]
+      (set content
+           (.. content
+               (string.format "{\\an8}{\\fnmonospace}%s %s\\N"
+                              (fs 28 point-label) (fs 28 point.value))))))
+  content)
+
+(fn display-mark-overlay []
+  (set state.mark-overlay.data (render-mark-overlay))
+  (state.mark-overlay:update))
+
+(fn mark-new-point []
+  (if (not state.mark-mode-enabled?)
+      (enable-mark-mode))
+  (let [time-pos (tonumber (mp.get_property :time-pos))
+        new-point {:value time-pos :mpd state.current-mpd}]
+    (case state.marked-points
+      (where (or [nil] [a b])) (do
+                                 (tset state.marked-points 1 new-point)
+                                 (set state.current-mark 1)
+                                 (if b
+                                     (tset state.marked-points 2 nil)))
+      [a nil] (do
+                (if (>= time-pos a.value)
+                    (do
+                      (tset state.marked-points 2 new-point)
+                      (set state.current-mark 2))
+                    (do
+                      (set state.marked-points [new-point a])
+                      (set state.current-mark 1)
+                      (mp.commandv :show-text "Points swapped"))))))
+  (display-mark-overlay))
+
+(fn edit-point []
+  (let [time-pos (tonumber (mp.get_property :time-pos))
+        new-point {:value time-pos :mpd state.current-mpd}]
+    (tset state.marked-points state.current-mark new-point)
+    (let [[a b] state.marked-points]
+      (if (and b (> a.value b.value))
+          (do
+            (set state.marked-points [b a])
+            (set state.current-mark (if (= time-pos b.value) 1 2))
+            (mp.commandv :show-text "Points swapped")))))
+  (display-mark-overlay))
+
+(fn go-to-point [index]
+  (if (?. state.marked-points index)
+      (do
+        (mp.set_property_native :pause true)
+        (mp.commandv :seek (tostring (. (. state.marked-points index) :value))
+                     :absolute)
+        (set state.current-mark index)
+        (display-mark-overlay))
+      (mp.commandv :show-text "Point not marked")))
 
 (fn render-column [column keys-order]
   (local right-margin 10)
@@ -93,14 +166,6 @@
                        "\\N")))
   (state.main-overlay:update))
 
-(fn deactivate []
-  (each [_ [name _] (pairs key-binds)]
-    (mp.remove_key_binding name))
-  (state.main-overlay:remove)
-  (if (not= nil state.mark-overlay)
-      (state.mark-overlay:remove))
-  (set state.mark-mode-enabled? false))
-
 (fn rewind-key-handler []
   (let [now (os.date "%Y%m%dT%H%z")]
     (input.get {:prompt "Rewind date:"
@@ -117,80 +182,16 @@
   (mp.commandv :script-message "yp:seek" (.. "-" settings.seek_offset)))
 
 (fn change-seek-offset-key-handler []
+  (fn submit-function [value]
+    (if (string.find value "[dhms]")
+        (do
+          (set settings.seek_offset value)
+          (input.terminate))
+        (input.log_error "Invalid value, should be [%dd][%Hh][%Mm][%Ss]")))
+
   (input.get {:prompt "New seek offset:"
               :default_text settings.seek_offset
-              :submit (fn [value]
-                        (if (string.find value "[dhms]")
-                            (do
-                              (set settings.seek_offset value)
-                              (input.terminate))
-                            (input.log_error "Invalid value, should be [%dd][%Hh][%Mm][%Ss]")))}))
-
-(fn activate-mark-mode []
-  (if (= nil state.mark-overlay)
-      (set state.mark-overlay (mp.create_osd_overlay :ass-events)))
-  (set state.mark-mode-enabled? true))
-
-(fn render-mark-overlay []
-  (local point-labels [:A :B])
-  (var content "{\\an8}Mark mode\\N")
-  (each [i point (ipairs state.marked-points)]
-    (let [point-label (string.format (if (= i state.current-mark) "(%s)"
-                                         "\\h%s\\h")
-                                     (. point-labels i))]
-      (set content
-           (.. content
-               (string.format "{\\an8}{\\fnmonospace}%s %s\\N"
-                              (fs 28 point-label) (fs 28 point.value))))))
-  content)
-
-(fn display-mark-overlay []
-  (set state.mark-overlay.data (render-mark-overlay))
-  (state.mark-overlay:update))
-
-(fn mark-new-point []
-  (if (not state.mark-mode-enabled?)
-      (activate-mark-mode))
-  (let [time-pos (tonumber (mp.get_property :time-pos))
-        new-point {:value time-pos :mpd state.current-mpd}]
-    (case state.marked-points
-      (where (or [nil] [a b])) (do
-                                 (tset state.marked-points 1 new-point)
-                                 (set state.current-mark 1)
-                                 (if b
-                                     (tset state.marked-points 2 nil)))
-      [a nil] (do
-                (if (>= time-pos a.value)
-                    (do
-                      (tset state.marked-points 2 new-point)
-                      (set state.current-mark 2))
-                    (do
-                      (set state.marked-points [new-point a])
-                      (set state.current-mark 1)
-                      (mp.commandv :show-text "Points swapped"))))))
-  (display-mark-overlay))
-
-(fn edit-point []
-  (let [time-pos (tonumber (mp.get_property :time-pos))
-        new-point {:value time-pos :mpd state.current-mpd}]
-    (tset state.marked-points state.current-mark new-point)
-    (let [[a b] state.marked-points]
-      (if (and b (> a.value b.value))
-          (do
-            (set state.marked-points [b a])
-            (set state.current-mark (if (= time-pos b.value) 1 2))
-            (mp.commandv :show-text "Points swapped")))))
-  (display-mark-overlay))
-
-(fn go-to-point [index]
-  (if (?. state.marked-points index)
-      (do
-        (mp.set_property_native :pause true)
-        (mp.commandv :seek (tostring (. (. state.marked-points index) :value))
-                     :absolute)
-        (set state.current-mark index)
-        (display-mark-overlay))
-      (mp.commandv :show-text "Point not marked")))
+              :submit submit-function}))
 
 (fn take-screenshot-key-handler []
   (mp.commandv :script-message "yp:take-screenshot"))
@@ -198,7 +199,15 @@
 (fn update-current-mpd []
   (tset state :current-mpd {:path (mp.get_property :path)}))
 
+(fn deactivate []
+  (set state.activated? false)
+  (disable-mark-mode)
+  (state.main-overlay:remove)
+  (each [_ [name _] (pairs key-binds)]
+    (mp.remove_key_binding name)))
+
 (fn activate []
+  (set state.activated? true)
   (tset key-binds :r [:rewind rewind-key-handler])
   (tset key-binds "<" [:seek-backward seek-backward-key-handler])
   (tset key-binds ">" [:seek-forward seek-forward-key-handler])
@@ -219,6 +228,9 @@
   (set state.main-overlay (mp.create_osd_overlay :ass-events))
   (display-main-overlay))
 
-(mp.add_forced_key_binding :Ctrl+p :activate activate)
+(mp.add_forced_key_binding :Ctrl+p :activate
+                           (fn []
+                             (if (not state.activated?)
+                                 (activate))))
 
 (mp.add_hook :on_load 50 update-current-mpd)
