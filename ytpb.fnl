@@ -255,13 +255,17 @@
         (state.clock-timer:resume))))
 
 (fn deactivate []
+  "Disable key bindings and hide overlays on closing the main overlay. Keep
+marked points, while the mark mode overlay will be hidden."
   (set state.activated? false)
-  (disable-mark-mode)
+  (state.mark-overlay:remove)
   (state.main-overlay:remove)
   (each [_ [name _] (pairs key-binds)]
     (mp.remove_key_binding name)))
 
 (fn activate []
+  "Register key bindings and show the main overlay. If it's not a first launch,
+show the previously marked points."
   (set state.activated? true)
   (tset key-binds :r [:rewind rewind-key-handler])
   (tset key-binds "<" [:seek-backward seek-backward-key-handler])
@@ -282,7 +286,9 @@
   (each [key [name func] (pairs key-binds)]
     (mp.add_forced_key_binding key name func))
   (set state.main-overlay (mp.create_osd_overlay :ass-events))
-  (display-main-overlay))
+  (display-main-overlay)
+  (if state.mark-mode-enabled?
+      (display-mark-overlay)))
 
 (mp.add_forced_key_binding :Ctrl+p :activate
                            (fn []

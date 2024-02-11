@@ -294,7 +294,7 @@ local function toggle_clock_key_handler()
 end
 local function deactivate()
   state["activated?"] = false
-  disable_mark_mode()
+  do end (state["mark-overlay"]):remove()
   do end (state["main-overlay"]):remove()
   for _, _33_ in pairs(key_binds) do
     local _each_34_ = _33_
@@ -337,16 +337,21 @@ local function activate()
     mp.add_forced_key_binding(key, name, func)
   end
   state["main-overlay"] = mp.create_osd_overlay("ass-events")
-  return display_main_overlay()
+  display_main_overlay()
+  if state["mark-mode-enabled?"] then
+    return display_mark_overlay()
+  else
+    return nil
+  end
 end
-local function _41_()
+local function _42_()
   if not state["activated?"] then
     return activate()
   else
     return nil
   end
 end
-mp.add_forced_key_binding("Ctrl+p", "activate", _41_)
+mp.add_forced_key_binding("Ctrl+p", "activate", _42_)
 local function on_file_loaded()
   update_current_mpd()
   return start_clock()
