@@ -38,6 +38,21 @@
         (set state.current-start-time (parse-mpd-start-time (f:read :*all)))
         (f:close))))
 
+;;; Clock
+
+(fn draw-clock []
+  (let [time-pos (mp.get_property_native :time-pos 0)
+        time-string (os.date "%Y-%m-%d %H:%M:%S"
+                             (+ time-pos state.current-start-time))
+        ass-text (string.format "{\\an9\\bord10\\3c&H908070&}%s" time-string)]
+    (set state.clock-overlay.data ass-text)
+    (state.clock-overlay:update)))
+
+(fn start-clock []
+  (set state.clock-overlay (mp.create_osd_overlay :ass-events))
+  (draw-clock)
+  (set state.clock-timer (mp.add_periodic_timer 1 draw-clock)))
+
 ;;: Mark mode
 
 (fn enable-mark-mode []
@@ -109,23 +124,10 @@
         (mp.commandv :seek (tostring (. (. state.marked-points index) :value))
                      :absolute)
         (set state.current-mark index)
-        (display-mark-overlay))
+        (display-mark-overlay)
+        (if (state.clock-timer:is_enabled)
+            (draw-clock)))
       (mp.commandv :show-text "Point not marked")))
-
-;;; Clock
-
-(fn draw-clock []
-  (let [time-pos (mp.get_property_native :time-pos 0)
-        time-string (os.date "%Y-%m-%d %H:%M:%S"
-                             (+ time-pos state.current-start-time))
-        ass-text (string.format "{\\an9\\bord10\\3c&H908070&}%s" time-string)]
-    (set state.clock-overlay.data ass-text)
-    (state.clock-overlay:update)))
-
-(fn start-clock []
-  (set state.clock-overlay (mp.create_osd_overlay :ass-events))
-  (draw-clock)
-  (set state.clock-timer (mp.add_periodic_timer 1 draw-clock)))
 
 ;;; Main
 

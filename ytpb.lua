@@ -27,6 +27,19 @@ local function update_current_mpd()
     return nil
   end
 end
+local function draw_clock()
+  local time_pos = mp.get_property_native("time-pos", 0)
+  local time_string = os.date("%Y-%m-%d %H:%M:%S", (time_pos + state["current-start-time"]))
+  local ass_text = string.format("{\\an9\\bord10\\3c&H908070&}%s", time_string)
+  state["clock-overlay"].data = ass_text
+  return (state["clock-overlay"]):update()
+end
+local function start_clock()
+  state["clock-overlay"] = mp.create_osd_overlay("ass-events")
+  draw_clock()
+  state["clock-timer"] = mp.add_periodic_timer(1, draw_clock)
+  return nil
+end
 local function enable_mark_mode()
   if (nil == state["mark-overlay"]) then
     state["mark-overlay"] = mp.create_osd_overlay("ass-events")
@@ -130,23 +143,15 @@ local function go_to_point(index)
     mp.set_property_native("pause", true)
     mp.commandv("seek", tostring(state["marked-points"][index].value), "absolute")
     state["current-mark"] = index
-    return display_mark_overlay()
+    display_mark_overlay()
+    if (state["clock-timer"]):is_enabled() then
+      return draw_clock()
+    else
+      return nil
+    end
   else
     return mp.commandv("show-text", "Point not marked")
   end
-end
-local function draw_clock()
-  local time_pos = mp.get_property_native("time-pos", 0)
-  local time_string = os.date("%Y-%m-%d %H:%M:%S", (time_pos + state["current-start-time"]))
-  local ass_text = string.format("{\\an9\\bord10\\3c&H908070&}%s", time_string)
-  state["clock-overlay"].data = ass_text
-  return (state["clock-overlay"]):update()
-end
-local function start_clock()
-  state["clock-overlay"] = mp.create_osd_overlay("ass-events")
-  draw_clock()
-  state["clock-timer"] = mp.add_periodic_timer(1, draw_clock)
-  return nil
 end
 local function render_column(column, keys_order)
   local right_margin = 10
@@ -173,11 +178,11 @@ local function render_column(column, keys_order)
   local aligned_key = nil
   for _, key in ipairs(keys_order) do
     local aligned_key0 = (string.rep("\\h", (max_key_length - #key)) .. key)
-    local function _21_()
+    local function _22_()
       local desc = column.keys[key]
       return string.format("%s%s%s", fs(key_font_size, b(aligned_key0)), fs(main_font_size, (" " .. desc)), string.rep(" ", (right_margin + (max_desc_length - #desc))))
     end
-    table.insert(rendered_lines, _21_())
+    table.insert(rendered_lines, _22_())
   end
   return rendered_lines
 end
@@ -185,7 +190,7 @@ local function stack_columns(...)
   local lines = {}
   do
     local max_column_size
-    local function _22_(...)
+    local function _23_(...)
       local tbl_18_auto = {}
       local i_19_auto = 0
       for _, column in ipairs({...}) do
@@ -198,19 +203,19 @@ local function stack_columns(...)
       end
       return tbl_18_auto
     end
-    max_column_size = math.max(table.unpack(_22_(...)))
+    max_column_size = math.max(table.unpack(_23_(...)))
     for i = 1, max_column_size do
       local line = ""
       for _, column in pairs({...}) do
-        local function _24_(...)
-          local t_25_ = column
-          if (nil ~= t_25_) then
-            t_25_ = t_25_[i]
+        local function _25_(...)
+          local t_26_ = column
+          if (nil ~= t_26_) then
+            t_26_ = t_26_[i]
           else
           end
-          return t_25_
+          return t_26_
         end
-        line = (line .. (_24_() or string.format("{\\alpha&HFF&}%s{\\alpha&H00&}", column[1])))
+        line = (line .. (_25_() or string.format("{\\alpha&HFF&}%s{\\alpha&H00&}", column[1])))
       end
       table.insert(lines, line)
     end
@@ -227,7 +232,7 @@ local function display_main_overlay()
   local other_column_lines = render_column(other_column, {"s", "t", "q"})
   do
     local stacked_columns = stack_columns(rewind_column_lines, mark_mode_column_lines, other_column_lines)
-    local _27_
+    local _28_
     do
       local tbl_18_auto = {}
       local i_19_auto = 0
@@ -239,19 +244,19 @@ local function display_main_overlay()
         else
         end
       end
-      _27_ = tbl_18_auto
+      _28_ = tbl_18_auto
     end
-    state["main-overlay"].data = table.concat(_27_, "\\N")
+    state["main-overlay"].data = table.concat(_28_, "\\N")
   end
   return (state["main-overlay"]):update()
 end
 local function rewind_key_handler()
   local now = os.date("%Y%m%dT%H%z")
-  local function _29_(value)
+  local function _30_(value)
     mp.commandv("script-message", "yp:rewind", value)
     return input.terminate()
   end
-  return input.get({prompt = "Rewind date:", default_text = now, cursor_position = 12, submit = _29_})
+  return input.get({prompt = "Rewind date:", default_text = now, cursor_position = 12, submit = _30_})
 end
 local function seek_forward_key_handler()
   return mp.commandv("script-message", "yp:seek", settings.seek_offset)
@@ -286,10 +291,10 @@ local function deactivate()
   state["activated?"] = false
   disable_mark_mode()
   do end (state["main-overlay"]):remove()
-  for _, _32_ in pairs(key_binds) do
-    local _each_33_ = _32_
-    local name = _each_33_[1]
-    local _0 = _each_33_[2]
+  for _, _33_ in pairs(key_binds) do
+    local _each_34_ = _33_
+    local name = _each_34_[1]
+    local _0 = _each_34_[2]
     mp.remove_key_binding(name)
   end
   return nil
@@ -301,42 +306,42 @@ local function activate()
   key_binds[">"] = {"seek-forward", seek_forward_key_handler}
   key_binds["O"] = {"change-seek-offset", change_seek_offset_key_handler}
   key_binds["m"] = {"mark-new-point", mark_new_point}
-  local function _34_()
+  local function _35_()
     if state["mark-mode-enabled?"] then
       return edit_point()
     else
       return mp.commandv("show-text", "No marked points")
     end
   end
-  key_binds["e"] = {"edit-point", _34_}
-  local function _36_()
+  key_binds["e"] = {"edit-point", _35_}
+  local function _37_()
     return go_to_point(1)
   end
-  key_binds["a"] = {"go-to-point-A", _36_}
-  local function _37_()
+  key_binds["a"] = {"go-to-point-A", _37_}
+  local function _38_()
     return go_to_point(2)
   end
-  key_binds["b"] = {"go-to-point-B", _37_}
+  key_binds["b"] = {"go-to-point-B", _38_}
   key_binds["s"] = {"take-screenshot", take_screenshot_key_handler}
   key_binds["t"] = {"toggle-clock", toggle_clock_key_handler}
   key_binds["q"] = {"quit", deactivate}
-  for key, _38_ in pairs(key_binds) do
-    local _each_39_ = _38_
-    local name = _each_39_[1]
-    local func = _each_39_[2]
+  for key, _39_ in pairs(key_binds) do
+    local _each_40_ = _39_
+    local name = _each_40_[1]
+    local func = _each_40_[2]
     mp.add_forced_key_binding(key, name, func)
   end
   state["main-overlay"] = mp.create_osd_overlay("ass-events")
   return display_main_overlay()
 end
-local function _40_()
+local function _41_()
   if not state["activated?"] then
     return activate()
   else
     return nil
   end
 end
-mp.add_forced_key_binding("Ctrl+p", "activate", _40_)
+mp.add_forced_key_binding("Ctrl+p", "activate", _41_)
 local function on_file_loaded()
   update_current_mpd()
   return start_clock()
