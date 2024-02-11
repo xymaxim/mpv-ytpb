@@ -69,13 +69,16 @@ local function render_mark_overlay()
       _5_ = "\\h%s\\h"
     end
     point_label = string.format(_5_, point_labels[i])
-    content = (content .. string.format("{\\an8}{\\fnmonospace}%s %s\\N", fs(28, point_label), fs(28, point.value)))
+    content = (content .. string.format("{\\an8}{\\fnmonospace}%s %s\\N", fs(28, point_label), fs(28, point.string)))
   end
   return content
 end
 local function display_mark_overlay()
   state["mark-overlay"].data = render_mark_overlay()
   return (state["mark-overlay"]):update()
+end
+local function format_time_string(timestamp)
+  return os.date("%Y-%m-%d %H:%M:%S", timestamp)
 end
 local function mark_new_point()
   if not state["mark-mode-enabled?"] then
@@ -84,7 +87,8 @@ local function mark_new_point()
   end
   do
     local time_pos = mp.get_property_native("time-pos")
-    local new_point = {value = time_pos, mpd = state["current-mpd"]}
+    local time_string = format_time_string((time_pos + state["current-start-time"]))
+    local new_point = {value = time_pos, string = time_string, mpd = state["current-mpd"]}
     local _8_ = state["marked-points"]
     if (((_G.type(_8_) == "table") and (_8_[1] == nil)) or ((_G.type(_8_) == "table") and (nil ~= _8_[1]) and (nil ~= _8_[2]))) then
       state["marked-points"][1] = new_point
@@ -111,7 +115,8 @@ end
 local function edit_point()
   do
     local time_pos = mp.get_property_native("time-pos")
-    local new_point = {value = time_pos, mpd = state["current-mpd"]}
+    local time_string = format_time_string((time_pos + state["current-start-time"]))
+    local new_point = {value = time_pos, string = time_string, mpd = state["current-mpd"]}
     state["marked-points"][state["current-mark"]] = new_point
     local _let_12_ = state["marked-points"]
     local a = _let_12_[1]

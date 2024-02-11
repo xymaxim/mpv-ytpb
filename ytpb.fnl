@@ -76,18 +76,22 @@
       (set content
            (.. content
                (string.format "{\\an8}{\\fnmonospace}%s %s\\N"
-                              (fs 28 point-label) (fs 28 point.value))))))
+                              (fs 28 point-label) (fs 28 point.string))))))
   content)
 
 (fn display-mark-overlay []
   (set state.mark-overlay.data (render-mark-overlay))
   (state.mark-overlay:update))
 
+(fn format-time-string [timestamp]
+  (os.date "%Y-%m-%d %H:%M:%S" timestamp))
+
 (fn mark-new-point []
   (if (not state.mark-mode-enabled?)
       (enable-mark-mode))
   (let [time-pos (mp.get_property_native :time-pos)
-        new-point {:value time-pos :mpd state.current-mpd}]
+        time-string (format-time-string (+ time-pos state.current-start-time))
+        new-point {:value time-pos :string time-string :mpd state.current-mpd}]
     (case state.marked-points
       (where (or [nil] [a b])) (do
                                  (tset state.marked-points 1 new-point)
@@ -107,7 +111,8 @@
 
 (fn edit-point []
   (let [time-pos (mp.get_property_native :time-pos)
-        new-point {:value time-pos :mpd state.current-mpd}]
+        time-string (format-time-string (+ time-pos state.current-start-time))
+        new-point {:value time-pos :string time-string :mpd state.current-mpd}]
     (tset state.marked-points state.current-mark new-point)
     (let [[a b] state.marked-points]
       (if (and b (> a.value b.value))
