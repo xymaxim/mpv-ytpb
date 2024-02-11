@@ -145,7 +145,8 @@ end
 local function start_clock()
   state["clock-overlay"] = mp.create_osd_overlay("ass-events")
   draw_clock()
-  return mp.add_periodic_timer(1, draw_clock)
+  state["clock-timer"] = mp.add_periodic_timer(1, draw_clock)
+  return nil
 end
 local function render_column(column, keys_order)
   local right_margin = 10
@@ -220,10 +221,10 @@ local function display_main_overlay()
   local line_tags = "{\\an4}{\\fnmonospace}"
   local rewind_column = {header = "Rewind and seek", keys = {r = "rewind", ["</>"] = "seek backward/forward", O = "change seek offset"}}
   local mark_mode_column = {header = "Mark mode", keys = {m = "mark new point", e = "edit point", ["a/b"] = "go to point A/B"}}
-  local other_column = {header = "Other", keys = {s = "take a screenshot", q = "quit"}}
+  local other_column = {header = "Other", keys = {s = "take a screenshot", t = "toggle clock", q = "quit"}}
   local rewind_column_lines = render_column(rewind_column, {"r", "</>", "O"})
   local mark_mode_column_lines = render_column(mark_mode_column, {"m", "e", "a/b"})
-  local other_column_lines = render_column(other_column, {"s", "q"})
+  local other_column_lines = render_column(other_column, {"s", "t", "q"})
   do
     local stacked_columns = stack_columns(rewind_column_lines, mark_mode_column_lines, other_column_lines)
     local _27_
@@ -272,14 +273,23 @@ end
 local function take_screenshot_key_handler()
   return mp.commandv("script-message", "yp:take-screenshot")
 end
+local function toggle_clock_key_handler()
+  if (state["clock-timer"]):is_enabled() then
+    do end (state["clock-timer"]):kill()
+    return (state["clock-overlay"]):remove()
+  else
+    draw_clock()
+    return (state["clock-timer"]):resume()
+  end
+end
 local function deactivate()
   state["activated?"] = false
   disable_mark_mode()
   do end (state["main-overlay"]):remove()
-  for _, _31_ in pairs(key_binds) do
-    local _each_32_ = _31_
-    local name = _each_32_[1]
-    local _0 = _each_32_[2]
+  for _, _32_ in pairs(key_binds) do
+    local _each_33_ = _32_
+    local name = _each_33_[1]
+    local _0 = _each_33_[2]
     mp.remove_key_binding(name)
   end
   return nil
@@ -291,41 +301,42 @@ local function activate()
   key_binds[">"] = {"seek-forward", seek_forward_key_handler}
   key_binds["O"] = {"change-seek-offset", change_seek_offset_key_handler}
   key_binds["m"] = {"mark-new-point", mark_new_point}
-  local function _33_()
+  local function _34_()
     if state["mark-mode-enabled?"] then
       return edit_point()
     else
       return mp.commandv("show-text", "No marked points")
     end
   end
-  key_binds["e"] = {"edit-point", _33_}
-  local function _35_()
+  key_binds["e"] = {"edit-point", _34_}
+  local function _36_()
     return go_to_point(1)
   end
-  key_binds["a"] = {"go-to-point-A", _35_}
-  local function _36_()
+  key_binds["a"] = {"go-to-point-A", _36_}
+  local function _37_()
     return go_to_point(2)
   end
-  key_binds["b"] = {"go-to-point-B", _36_}
+  key_binds["b"] = {"go-to-point-B", _37_}
   key_binds["s"] = {"take-screenshot", take_screenshot_key_handler}
+  key_binds["t"] = {"toggle-clock", toggle_clock_key_handler}
   key_binds["q"] = {"quit", deactivate}
-  for key, _37_ in pairs(key_binds) do
-    local _each_38_ = _37_
-    local name = _each_38_[1]
-    local func = _each_38_[2]
+  for key, _38_ in pairs(key_binds) do
+    local _each_39_ = _38_
+    local name = _each_39_[1]
+    local func = _each_39_[2]
     mp.add_forced_key_binding(key, name, func)
   end
   state["main-overlay"] = mp.create_osd_overlay("ass-events")
   return display_main_overlay()
 end
-local function _39_()
+local function _40_()
   if not state["activated?"] then
     return activate()
   else
     return nil
   end
 end
-mp.add_forced_key_binding("Ctrl+p", "activate", _39_)
+mp.add_forced_key_binding("Ctrl+p", "activate", _40_)
 local function on_file_loaded()
   update_current_mpd()
   return start_clock()

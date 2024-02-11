@@ -125,7 +125,7 @@
 (fn start-clock []
   (set state.clock-overlay (mp.create_osd_overlay :ass-events))
   (draw-clock)
-  (mp.add_periodic_timer 1 draw-clock))
+  (set state.clock-timer (mp.add_periodic_timer 1 draw-clock)))
 
 ;;; Main
 
@@ -191,10 +191,13 @@
   (local mark-mode-column
          {:header "Mark mode"
           :keys {:m "mark new point" :e "edit point" :a/b "go to point A/B"}})
-  (local other-column {:header :Other :keys {:s "take a screenshot" :q :quit}})
+  (local other-column {:header :Other
+                       :keys {:s "take a screenshot"
+                              :t "toggle clock"
+                              :q :quit}})
   (local rewind-column-lines (render-column rewind-column [:r "</>" :O]))
   (local mark-mode-column-lines (render-column mark-mode-column [:m :e :a/b]))
-  (local other-column-lines (render-column other-column [:s :q]))
+  (local other-column-lines (render-column other-column [:s :t :q]))
   (let [stacked-columns (stack-columns rewind-column-lines
                                        mark-mode-column-lines other-column-lines)]
     (set state.main-overlay.data
@@ -235,6 +238,15 @@
 (fn take-screenshot-key-handler []
   (mp.commandv :script-message "yp:take-screenshot"))
 
+(fn toggle-clock-key-handler []
+  (if (state.clock-timer:is_enabled)
+      (do
+        (state.clock-timer:kill)
+        (state.clock-overlay:remove))
+      (do
+        (draw-clock)
+        (state.clock-timer:resume))))
+
 (fn deactivate []
   (set state.activated? false)
   (disable-mark-mode)
@@ -258,6 +270,7 @@
   (tset key-binds :a [:go-to-point-A #(go-to-point 1)])
   (tset key-binds :b [:go-to-point-B #(go-to-point 2)])
   (tset key-binds :s [:take-screenshot take-screenshot-key-handler])
+  (tset key-binds :t [:toggle-clock toggle-clock-key-handler])
   (tset key-binds :q [:quit deactivate])
   (each [key [name func] (pairs key-binds)]
     (mp.add_forced_key_binding key name func))
