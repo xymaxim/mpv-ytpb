@@ -115,7 +115,7 @@
 ;;; Clock
 
 (fn draw-clock []
-  (let [time-pos (mp.get_property_native :time-pos)
+  (let [time-pos (mp.get_property_native :time-pos 0)
         time-string (os.date "%Y-%m-%d %H:%M:%S"
                              (+ time-pos state.current-start-time))
         ass-text (string.format "{\\an9\\bord10\\3c&H908070&}%s" time-string)]

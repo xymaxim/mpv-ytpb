@@ -136,7 +136,7 @@ local function go_to_point(index)
   end
 end
 local function draw_clock()
-  local time_pos = mp.get_property_native("time-pos")
+  local time_pos = mp.get_property_native("time-pos", 0)
   local time_string = os.date("%Y-%m-%d %H:%M:%S", (time_pos + state["current-start-time"]))
   local ass_text = string.format("{\\an9\\bord10\\3c&H908070&}%s", time_string)
   state["clock-overlay"].data = ass_text
