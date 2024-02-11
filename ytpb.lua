@@ -226,10 +226,10 @@ local function display_main_overlay()
   local line_tags = "{\\an4}{\\fnmonospace}"
   local rewind_column = {header = "Rewind and seek", keys = {r = "rewind", ["</>"] = "seek backward/forward", O = "change seek offset"}}
   local mark_mode_column = {header = "Mark mode", keys = {m = "mark new point", e = "edit point", ["a/b"] = "go to point A/B"}}
-  local other_column = {header = "Other", keys = {s = "take a screenshot", t = "toggle clock", q = "quit"}}
+  local other_column = {header = "Other", keys = {s = "take a screenshot", T = "toggle clock", q = "quit"}}
   local rewind_column_lines = render_column(rewind_column, {"r", "</>", "O"})
   local mark_mode_column_lines = render_column(mark_mode_column, {"m", "e", "a/b"})
-  local other_column_lines = render_column(other_column, {"s", "t", "q"})
+  local other_column_lines = render_column(other_column, {"s", "T", "q"})
   do
     local stacked_columns = stack_columns(rewind_column_lines, mark_mode_column_lines, other_column_lines)
     local _28_
@@ -323,7 +323,7 @@ local function activate()
   end
   key_binds["b"] = {"go-to-point-B", _38_}
   key_binds["s"] = {"take-screenshot", take_screenshot_key_handler}
-  key_binds["t"] = {"toggle-clock", toggle_clock_key_handler}
+  key_binds["T"] = {"toggle-clock", toggle_clock_key_handler}
   key_binds["q"] = {"quit", deactivate}
   for key, _39_ in pairs(key_binds) do
     local _each_40_ = _39_
