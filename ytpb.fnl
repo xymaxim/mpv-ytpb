@@ -9,11 +9,21 @@
               :mark-mode-enabled? false
               :mark-overlay nil
               :marked-points []
-              :current-mark nil})
+              :current-mark nil
+              :clock-overlay nil
+              :clock-timer nil})
 
 (local settings {:seek_offset :10m})
 
 (local key-binds {})
+
+;;; Utility functions
+
+(fn b [value]
+  (string.format "{\\b1}%s{\\b0}" value))
+
+(fn fs [size value]
+  (string.format "{\\fs%s}%s" size value))
 
 (fn parse-mpd-start-time [content]
   (let [(_ _ start-time-str) (content:find "availabilityStartTime=\"(.+)\"")
@@ -21,11 +31,14 @@
         (year month day hour min sec) (string.match start-time-str date-pattern)]
     (os.time {: year : month : day : hour : min : sec})))
 
-(fn b [value]
-  (string.format "{\\b1}%s{\\b0}" value))
+(fn update-current-mpd []
+  (tset state :current-mpd {:path (mp.get_property :path)})
+  (case (io.open state.current-mpd.path)
+    f (do
+        (set state.current-start-time (parse-mpd-start-time (f:read :*all)))
+        (f:close))))
 
-(fn fs [size value]
-  (string.format "{\\fs%s}%s" size value))
+;;: Mark mode
 
 (fn enable-mark-mode []
   (if (= nil state.mark-overlay)
@@ -98,6 +111,23 @@
         (set state.current-mark index)
         (display-mark-overlay))
       (mp.commandv :show-text "Point not marked")))
+
+;;; Clock
+
+(fn draw-clock []
+  (let [time-pos (mp.get_property_native :time-pos)
+        time-string (os.date "%Y-%m-%d %H:%M:%S"
+                             (+ time-pos state.current-start-time))
+        ass-text (string.format "{\\an9\\bord10\\3c&H908070&}%s" time-string)]
+    (set state.clock-overlay.data ass-text)
+    (state.clock-overlay:update)))
+
+(fn start-clock []
+  (set state.clock-overlay (mp.create_osd_overlay :ass-events))
+  (draw-clock)
+  (mp.add_periodic_timer 1 draw-clock))
+
+;;; Main
 
 (fn render-column [column keys-order]
   (local right-margin 10)
@@ -173,6 +203,8 @@
                        "\\N")))
   (state.main-overlay:update))
 
+;;; Setup
+
 (fn rewind-key-handler []
   (let [now (os.date "%Y%m%dT%H%z")]
     (input.get {:prompt "Rewind date:"
@@ -202,14 +234,6 @@
 
 (fn take-screenshot-key-handler []
   (mp.commandv :script-message "yp:take-screenshot"))
-
-(fn update-current-mpd []
-  (tset state :current-mpd {:path (mp.get_property :path)})
-  (case (io.open state.current-mpd.path)
-    f (do
-        (set state.current-start-time
-             (parse-mpd-start-time (f:read :*all)))
-        (f:close))))
 
 (fn deactivate []
   (set state.activated? false)
@@ -245,4 +269,8 @@
                              (if (not state.activated?)
                                  (activate))))
 
-(mp.add_hook :on_load 50 update-current-mpd)
+(fn on-file-loaded []
+  (update-current-mpd)
+  (start-clock))
+
+(mp.register_event :file-loaded on-file-loaded)
