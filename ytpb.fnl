@@ -71,7 +71,7 @@
 (fn mark-new-point []
   (if (not state.mark-mode-enabled?)
       (enable-mark-mode))
-  (let [time-pos (tonumber (mp.get_property :time-pos))
+  (let [time-pos (mp.get_property_native :time-pos)
         new-point {:value time-pos :mpd state.current-mpd}]
     (case state.marked-points
       (where (or [nil] [a b])) (do
@@ -91,7 +91,7 @@
   (display-mark-overlay))
 
 (fn edit-point []
-  (let [time-pos (tonumber (mp.get_property :time-pos))
+  (let [time-pos (mp.get_property_native :time-pos)
         new-point {:value time-pos :mpd state.current-mpd}]
     (tset state.marked-points state.current-mark new-point)
     (let [[a b] state.marked-points]

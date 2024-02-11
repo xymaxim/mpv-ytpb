@@ -70,7 +70,7 @@ local function mark_new_point()
   else
   end
   do
-    local time_pos = tonumber(mp.get_property("time-pos"))
+    local time_pos = mp.get_property_native("time-pos")
     local new_point = {value = time_pos, mpd = state["current-mpd"]}
     local _8_ = state["marked-points"]
     if (((_G.type(_8_) == "table") and (_8_[1] == nil)) or ((_G.type(_8_) == "table") and (nil ~= _8_[1]) and (nil ~= _8_[2]))) then
@@ -97,7 +97,7 @@ local function mark_new_point()
 end
 local function edit_point()
   do
-    local time_pos = tonumber(mp.get_property("time-pos"))
+    local time_pos = mp.get_property_native("time-pos")
     local new_point = {value = time_pos, mpd = state["current-mpd"]}
     state["marked-points"][state["current-mark"]] = new_point
     local _let_12_ = state["marked-points"]
