@@ -2,7 +2,7 @@
 (local options (require :mp.options))
 (local input (require :mp.input))
 
-(local state {:current-mpd nil
+(local state {:current-mpd-path nil
               :current-start-time nil
               :activated? false
               :main-overlay nil
@@ -37,11 +37,10 @@
       (os.time {: year : month : day : hour : min : sec}))))
 
 (fn update-current-mpd []
-  (tset state :current-mpd {:path (mp.get_property :path)})
-  (case (io.open state.current-mpd.path)
+  (set state.current-mpd-path (mp.get_property :path))
+  (case (io.open state.current-mpd-path)
     f (do
         (set state.current-start-time (parse-mpd-start-time (f:read :*all)))
-        (set state.current-mpd.start-time state.current-start-time)
         (f:close))))
 
 ;;; Clock
@@ -78,25 +77,27 @@
   (if (not= nil state.mark-overlay)
       (state.mark-overlay:remove)))
 
+(fn format-point-time-string [timestamp]
+  (os.date "!%Y-%m-%d %H:%M:%S" (+ timestamp settings.utc-offset)))
+
 (fn render-mark-overlay []
   (local point-labels [:A :B])
   (var content "{\\an8}Mark mode\\N")
   (each [i point (ipairs state.marked-points)]
     (let [point-label (string.format (if (= i state.current-mark) "(%s)"
                                          "\\h%s\\h")
-                                     (. point-labels i))]
+                                     (. point-labels i))
+          point-string (format-point-time-string (+ point.offset
+                                                    state.current-start-time))]
       (set content
            (.. content
                (string.format "{\\an8}{\\fnmonospace}%s %s\\N"
-                              (fs 28 point-label) (fs 28 point.string))))))
+                              (fs 28 point-label) (fs 28 point-string))))))
   content)
 
 (fn display-mark-overlay []
   (set state.mark-overlay.data (render-mark-overlay))
   (state.mark-overlay:update))
-
-(fn format-point-time-string [timestamp]
-  (os.date "!%Y-%m-%d %H:%M:%S" (+ timestamp settings.utc-offset)))
 
 (fn mark-new-point []
   (local cache-state (mp.get_property_native :demuxer-cache-state))
@@ -105,7 +106,7 @@
   (let [time-pos (mp.get_property_native :time-pos)
         time-string (format-point-time-string (+ time-pos
                                                  state.current-start-time))
-        new-point {:value time-pos :string time-string :mpd state.current-mpd}]
+        new-point {:offset time-pos :string time-string :start-time state.current-start-time :path state.current-mpd-path}]
     (case state.marked-points
       (where (or [nil] [a b])) (do
                                  (tset state.marked-points 1 new-point)
@@ -113,7 +114,7 @@
                                  (if b
                                      (tset state.marked-points 2 nil)))
       [a nil] (do
-                (if (>= time-pos a.value)
+                (if (>= time-pos a.offset)
                     (do
                       (tset state.marked-points 2 new-point)
                       (set state.current-mark 2))
@@ -125,15 +126,14 @@
 
 (fn edit-point []
   (let [time-pos (mp.get_property_native :time-pos)
-        time-string (format-point-time-string (+ time-pos
-                                                 state.current-start-time))
-        new-point {:value time-pos :string time-string :mpd state.current-mpd}]
+        time-string (format-point-time-string (+ time-pos state.current-start-time))
+        new-point {:offset time-pos :string time-string :start-time state.current-start-time :path state.current-mpd-path}]
     (tset state.marked-points state.current-mark new-point)
     (let [[a b] state.marked-points]
-      (if (and b (> a.value b.value))
+      (if (and b (> a.offset b.offset))
           (do
             (set state.marked-points [b a])
-            (set state.current-mark (if (= time-pos b.value) 1 2))
+            (set state.current-mark (if (= time-pos b.offset) 1 2))
             (mp.commandv :show-text "Points swapped")))))
   (display-mark-overlay))
 
@@ -146,10 +146,10 @@
   (if point
       (do
         (mp.set_property_native :pause true)
-        (let [mpd-start-time point.mpd.start-time
-              point-timestamp (+ point.value point.mpd.start-time)]
-          (if (= state.current-mpd.path point.mpd.path)
-              (mp.commandv :seek (tostring point.value) :absolute)
+        (let [mpd-start-time point.start-time
+              point-timestamp (+ point.offset point.start-time)]
+          (if (= state.current-mpd-path point.path)
+              (mp.commandv :seek (tostring point.offset) :absolute)
               (rewind point-timestamp)))
         (set state.current-mark index)
         (display-mark-overlay)
@@ -224,10 +224,11 @@
   (local other-column {:header :Other
                        :keys {:s "take a screenshot"
                               :C "toggle clock"
+                              :T "change timezone"
                               :q :quit}})
   (local rewind-column-lines (render-column rewind-column [:r "</>" :O]))
   (local mark-mode-column-lines (render-column mark-mode-column [:m :e :a/b]))
-  (local other-column-lines (render-column other-column [:s :C :q]))
+  (local other-column-lines (render-column other-column [:s :C :T :q]))
   (let [stacked-columns (stack-columns rewind-column-lines
                                        mark-mode-column-lines other-column-lines)]
     (set state.main-overlay.data
@@ -277,6 +278,20 @@
         (draw-clock)
         (state.clock-timer:resume))))
 
+(fn change-timezone-key-handler []
+  (input.get {:prompt "New timezone offset: UTC"
+              :default_text :+00
+              :cursor_position 4
+              :submit (fn [value]
+                        (set settings.utc-offset (* (tonumber value) 3600))
+                        (each [_ point (ipairs state.marked-points)]
+                          (set point.string
+                               (format-point-time-string (+ point.offset
+                                                            state.current-start-time))))
+                        (draw-clock)
+                        (if state.mark-mode-enabled? (display-mark-overlay))
+                        (input.terminate))}))
+
 (fn deactivate []
   "Disable key bindings and hide overlays on closing the main overlay. Keep
 marked points, while the mark mode overlay will be hidden."
@@ -306,6 +321,7 @@ show the previously marked points."
   (tset key-binds :b [:go-to-point-B #(go-to-point 2)])
   (tset key-binds :s [:take-screenshot take-screenshot-key-handler])
   (tset key-binds :C [:toggle-clock toggle-clock-key-handler])
+  (tset key-binds :T [:change-timezone change-timezone-key-handler])
   (tset key-binds :q [:quit deactivate])
   (each [key [name func] (pairs key-binds)]
     (mp.add_forced_key_binding key name func))
