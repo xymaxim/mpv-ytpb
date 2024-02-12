@@ -13,7 +13,10 @@
               :clock-overlay nil
               :clock-timer nil})
 
-(local settings {:seek_offset :10m})
+(local settings {:seek_offset :10m :utc-offset nil})
+(if (= nil settings.utc-offset)
+    (let [local-offset (- (os.time) (os.time (os.date :!*t)))]
+      (set settings.utc-offset local-offset)))
 
 (local key-binds {})
 
@@ -43,10 +46,16 @@
 
 ;;; Clock
 
+(fn format-clock-time-string [timestamp]
+  (let [main-part (os.date "!%Y-%m-%d %H:%M:%S"
+                           (+ timestamp settings.utc-offset))
+        tz-part (string.format "+%02d" (/ settings.utc-offset 3600))]
+    (string.format "%s %s" main-part tz-part)))
+
 (fn draw-clock []
   (let [time-pos (mp.get_property_native :time-pos 0)
-        time-string (os.date "!%Y-%m-%d %H:%M:%S %z"
-                             (+ time-pos state.current-start-time))
+        time-string (format-clock-time-string (+ time-pos
+                                                 state.current-start-time))
         ass-text (string.format "{\\an9\\bord10\\3c&H908070&}%s" time-string)]
     (set state.clock-overlay.data ass-text)
     (state.clock-overlay:update)))
@@ -86,15 +95,16 @@
   (set state.mark-overlay.data (render-mark-overlay))
   (state.mark-overlay:update))
 
-(fn format-time-string [timestamp]
-  (os.date "!%Y-%m-%d %H:%M:%S%z" timestamp))
+(fn format-point-time-string [timestamp]
+  (os.date "!%Y-%m-%d %H:%M:%S" (+ timestamp settings.utc-offset)))
 
 (fn mark-new-point []
   (local cache-state (mp.get_property_native :demuxer-cache-state))
   (if (not state.mark-mode-enabled?)
       (enable-mark-mode))
   (let [time-pos (mp.get_property_native :time-pos)
-        time-string (format-time-string (+ time-pos state.current-start-time))
+        time-string (format-point-time-string (+ time-pos
+                                                 state.current-start-time))
         new-point {:value time-pos :string time-string :mpd state.current-mpd}]
     (case state.marked-points
       (where (or [nil] [a b])) (do
@@ -115,7 +125,8 @@
 
 (fn edit-point []
   (let [time-pos (mp.get_property_native :time-pos)
-        time-string (format-time-string (+ time-pos state.current-start-time))
+        time-string (format-point-time-string (+ time-pos
+                                                 state.current-start-time))
         new-point {:value time-pos :string time-string :mpd state.current-mpd}]
     (tset state.marked-points state.current-mark new-point)
     (let [[a b] state.marked-points]
@@ -136,7 +147,7 @@
       (do
         (mp.set_property_native :pause true)
         (let [mpd-start-time point.mpd.start-time
-              point-timestamp (+ point.mpd.start-time point.value)]
+              point-timestamp (+ point.value point.mpd.start-time)]
           (if (= state.current-mpd.path point.mpd.path)
               (mp.commandv :seek (tostring point.value) :absolute)
               (rewind point-timestamp)))
