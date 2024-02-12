@@ -223,11 +223,11 @@
           :keys {:m "mark new point" :e "edit point" :a/b "go to point A/B"}})
   (local other-column {:header :Other
                        :keys {:s "take a screenshot"
-                              :T "toggle clock"
+                              :C "toggle clock"
                               :q :quit}})
   (local rewind-column-lines (render-column rewind-column [:r "</>" :O]))
   (local mark-mode-column-lines (render-column mark-mode-column [:m :e :a/b]))
-  (local other-column-lines (render-column other-column [:s :T :q]))
+  (local other-column-lines (render-column other-column [:s :C :q]))
   (let [stacked-columns (stack-columns rewind-column-lines
                                        mark-mode-column-lines other-column-lines)]
     (set state.main-overlay.data
@@ -305,7 +305,7 @@ show the previously marked points."
   (tset key-binds :a [:go-to-point-A #(go-to-point 1)])
   (tset key-binds :b [:go-to-point-B #(go-to-point 2)])
   (tset key-binds :s [:take-screenshot take-screenshot-key-handler])
-  (tset key-binds :T [:toggle-clock toggle-clock-key-handler])
+  (tset key-binds :C [:toggle-clock toggle-clock-key-handler])
   (tset key-binds :q [:quit deactivate])
   (each [key [name func] (pairs key-binds)]
     (mp.add_forced_key_binding key name func))
