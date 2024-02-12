@@ -11,10 +11,12 @@ local function fs(size, value)
   return string.format("{\\fs%s}%s", size, value)
 end
 local function parse_mpd_start_time(content)
+  local offset = (os.time() - os.time(os.date("!*t")))
   local _, _0, start_time_str = content:find("availabilityStartTime=\"(.+)\"")
   local date_pattern = "(%d+)-(%d+)-(%d+)T(%d+):(%d+):(%d+)+00:00"
   local year, month, day, hour, min, sec = string.match(start_time_str, date_pattern)
-  return os.time({year = year, month = month, day = day, hour = hour, min = min, sec = sec})
+  local sec0 = (sec + offset)
+  return os.time({year = year, month = month, day = day, hour = hour, min = min, sec = sec0})
 end
 local function update_current_mpd()
   state["current-mpd"] = {path = mp.get_property("path")}
@@ -22,6 +24,7 @@ local function update_current_mpd()
   if (nil ~= _1_) then
     local f = _1_
     state["current-start-time"] = parse_mpd_start_time(f:read("*all"))
+    state["current-mpd"]["start-time"] = state["current-start-time"]
     return f:close()
   else
     return nil
@@ -29,7 +32,7 @@ local function update_current_mpd()
 end
 local function draw_clock()
   local time_pos = mp.get_property_native("time-pos", 0)
-  local time_string = os.date("%Y-%m-%d %H:%M:%S", (time_pos + state["current-start-time"]))
+  local time_string = os.date("!%Y-%m-%d %H:%M:%S %z", (time_pos + state["current-start-time"]))
   local ass_text = string.format("{\\an9\\bord10\\3c&H908070&}%s", time_string)
   state["clock-overlay"].data = ass_text
   return (state["clock-overlay"]):update()
@@ -78,9 +81,10 @@ local function display_mark_overlay()
   return (state["mark-overlay"]):update()
 end
 local function format_time_string(timestamp)
-  return os.date("%Y-%m-%d %H:%M:%S", timestamp)
+  return os.date("!%Y-%m-%d %H:%M:%S%z", timestamp)
 end
 local function mark_new_point()
+  local cache_state = mp.get_property_native("demuxer-cache-state")
   if not state["mark-mode-enabled?"] then
     enable_mark_mode()
   else
@@ -134,19 +138,30 @@ local function edit_point()
   end
   return display_mark_overlay()
 end
+local function rewind(timestamp)
+  return mp.commandv("script-message", "yp:rewind", os.date("!%Y-%m-%dT%H:%M:%S%z", timestamp))
+end
 local function go_to_point(index)
-  local _16_
+  local point
   do
     local t_15_ = state["marked-points"]
     if (nil ~= t_15_) then
       t_15_ = t_15_[index]
     else
     end
-    _16_ = t_15_
+    point = t_15_
   end
-  if _16_ then
+  if point then
     mp.set_property_native("pause", true)
-    mp.commandv("seek", tostring(state["marked-points"][index].value), "absolute")
+    do
+      local mpd_start_time = point.mpd["start-time"]
+      local point_timestamp = (point.mpd["start-time"] + point.value)
+      if (state["current-mpd"].path == point.mpd.path) then
+        mp.commandv("seek", tostring(point.value), "absolute")
+      else
+        rewind(point_timestamp)
+      end
+    end
     state["current-mark"] = index
     display_mark_overlay()
     if (state["clock-timer"]):is_enabled() then
@@ -256,7 +271,7 @@ local function display_main_overlay()
   return (state["main-overlay"]):update()
 end
 local function rewind_key_handler()
-  local now = os.date("%Y%m%dT%H%z")
+  local now = os.date("!%Y%m%dT%H%z")
   local function _30_(value)
     mp.commandv("script-message", "yp:rewind", value)
     return input.terminate()
@@ -294,12 +309,15 @@ local function toggle_clock_key_handler()
 end
 local function deactivate()
   state["activated?"] = false
-  do end (state["mark-overlay"]):remove()
+  if state["mark-mode-enabled?"] then
+    do end (state["mark-overlay"]):remove()
+  else
+  end
   do end (state["main-overlay"]):remove()
-  for _, _33_ in pairs(key_binds) do
-    local _each_34_ = _33_
-    local name = _each_34_[1]
-    local _0 = _each_34_[2]
+  for _, _34_ in pairs(key_binds) do
+    local _each_35_ = _34_
+    local name = _each_35_[1]
+    local _0 = _each_35_[2]
     mp.remove_key_binding(name)
   end
   return nil
@@ -311,29 +329,29 @@ local function activate()
   key_binds[">"] = {"seek-forward", seek_forward_key_handler}
   key_binds["O"] = {"change-seek-offset", change_seek_offset_key_handler}
   key_binds["m"] = {"mark-new-point", mark_new_point}
-  local function _35_()
+  local function _36_()
     if state["mark-mode-enabled?"] then
       return edit_point()
     else
       return mp.commandv("show-text", "No marked points")
     end
   end
-  key_binds["e"] = {"edit-point", _35_}
-  local function _37_()
+  key_binds["e"] = {"edit-point", _36_}
+  local function _38_()
     return go_to_point(1)
   end
-  key_binds["a"] = {"go-to-point-A", _37_}
-  local function _38_()
+  key_binds["a"] = {"go-to-point-A", _38_}
+  local function _39_()
     return go_to_point(2)
   end
-  key_binds["b"] = {"go-to-point-B", _38_}
+  key_binds["b"] = {"go-to-point-B", _39_}
   key_binds["s"] = {"take-screenshot", take_screenshot_key_handler}
   key_binds["T"] = {"toggle-clock", toggle_clock_key_handler}
   key_binds["q"] = {"quit", deactivate}
-  for key, _39_ in pairs(key_binds) do
-    local _each_40_ = _39_
-    local name = _each_40_[1]
-    local func = _each_40_[2]
+  for key, _40_ in pairs(key_binds) do
+    local _each_41_ = _40_
+    local name = _each_41_[1]
+    local func = _each_41_[2]
     mp.add_forced_key_binding(key, name, func)
   end
   state["main-overlay"] = mp.create_osd_overlay("ass-events")
@@ -344,14 +362,14 @@ local function activate()
     return nil
   end
 end
-local function _42_()
+local function _43_()
   if not state["activated?"] then
     return activate()
   else
     return nil
   end
 end
-mp.add_forced_key_binding("Ctrl+p", "activate", _42_)
+mp.add_forced_key_binding("Ctrl+p", "activate", _43_)
 local function on_file_loaded()
   update_current_mpd()
   return start_clock()

@@ -26,23 +26,26 @@
   (string.format "{\\fs%s}%s" size value))
 
 (fn parse-mpd-start-time [content]
+  (local offset (- (os.time) (os.time (os.date :!*t))))
   (let [(_ _ start-time-str) (content:find "availabilityStartTime=\"(.+)\"")
         date-pattern "(%d+)-(%d+)-(%d+)T(%d+):(%d+):(%d+)+00:00"
         (year month day hour min sec) (string.match start-time-str date-pattern)]
-    (os.time {: year : month : day : hour : min : sec})))
+    (let [sec (+ sec offset)]
+      (os.time {: year : month : day : hour : min : sec}))))
 
 (fn update-current-mpd []
   (tset state :current-mpd {:path (mp.get_property :path)})
   (case (io.open state.current-mpd.path)
     f (do
         (set state.current-start-time (parse-mpd-start-time (f:read :*all)))
+        (set state.current-mpd.start-time state.current-start-time)
         (f:close))))
 
 ;;; Clock
 
 (fn draw-clock []
   (let [time-pos (mp.get_property_native :time-pos 0)
-        time-string (os.date "%Y-%m-%d %H:%M:%S"
+        time-string (os.date "!%Y-%m-%d %H:%M:%S %z"
                              (+ time-pos state.current-start-time))
         ass-text (string.format "{\\an9\\bord10\\3c&H908070&}%s" time-string)]
     (set state.clock-overlay.data ass-text)
@@ -84,9 +87,10 @@
   (state.mark-overlay:update))
 
 (fn format-time-string [timestamp]
-  (os.date "%Y-%m-%d %H:%M:%S" timestamp))
+  (os.date "!%Y-%m-%d %H:%M:%S%z" timestamp))
 
 (fn mark-new-point []
+  (local cache-state (mp.get_property_native :demuxer-cache-state))
   (if (not state.mark-mode-enabled?)
       (enable-mark-mode))
   (let [time-pos (mp.get_property_native :time-pos)
@@ -122,12 +126,20 @@
             (mp.commandv :show-text "Points swapped")))))
   (display-mark-overlay))
 
+(fn rewind [timestamp]
+  (mp.commandv :script-message "yp:rewind"
+               (os.date "!%Y-%m-%dT%H:%M:%S%z" timestamp)))
+
 (fn go-to-point [index]
-  (if (?. state.marked-points index)
+  (local point (?. state.marked-points index))
+  (if point
       (do
         (mp.set_property_native :pause true)
-        (mp.commandv :seek (tostring (. (. state.marked-points index) :value))
-                     :absolute)
+        (let [mpd-start-time point.mpd.start-time
+              point-timestamp (+ point.mpd.start-time point.value)]
+          (if (= state.current-mpd.path point.mpd.path)
+              (mp.commandv :seek (tostring point.value) :absolute)
+              (rewind point-timestamp)))
         (set state.current-mark index)
         (display-mark-overlay)
         (if (state.clock-timer:is_enabled)
@@ -216,7 +228,7 @@
 ;;; Setup
 
 (fn rewind-key-handler []
-  (let [now (os.date "%Y%m%dT%H%z")]
+  (let [now (os.date "!%Y%m%dT%H%z")]
     (input.get {:prompt "Rewind date:"
                 :default_text now
                 :cursor_position 12
@@ -258,7 +270,8 @@
   "Disable key bindings and hide overlays on closing the main overlay. Keep
 marked points, while the mark mode overlay will be hidden."
   (set state.activated? false)
-  (state.mark-overlay:remove)
+  (if state.mark-mode-enabled?
+      (state.mark-overlay:remove))
   (state.main-overlay:remove)
   (each [_ [name _] (pairs key-binds)]
     (mp.remove_key_binding name)))
