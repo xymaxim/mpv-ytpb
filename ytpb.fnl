@@ -1,4 +1,5 @@
 (local mp (require :mp))
+(local msg (require :mp.msg))
 (local options (require :mp.options))
 (local input (require :mp.input))
 
@@ -99,16 +100,15 @@
 
 (fn render-mark-overlay []
   (local point-labels [:A :B])
-  (local content ["{\\an8}Mark mode"])
+  (local lines ["{\\an8}Mark mode"])
   (each [i point (ipairs state.marked-points)]
-    (let [point-label (string.format (if (= i state.current-mark) "(%s)"
-                                         "\\h%s\\h")
-                                     (. point-labels i))
+    (let [point-label-template (if (= i state.current-mark) "(%s)" "\\h%s\\h")
+          point-label (string.format point-label-template (. point-labels i))
           point-string (point:format settings.utc-offset)]
-      (table.insert content
+      (table.insert lines
                     (string.format "{\\an8}{\\fnmonospace}%s %s"
                                    (fs 28 point-label) (fs 28 point-string)))))
-  (table.concat content "\\N"))
+  (table.concat lines "\\N"))
 
 (fn display-mark-overlay []
   (set state.mark-overlay.data (render-mark-overlay))
@@ -353,3 +353,16 @@ show the previously marked points."
   (start-clock))
 
 (mp.register_event :file-loaded on-file-loaded)
+
+(fn handle-finished-rewind [mpd-path time-pos]
+  (fn seek-after-load []
+    (let [time-pos (tonumber time-pos)
+          cache-state (mp.get_property_native :demuxer-cache-state)]
+      (if (not= 0 (length cache-state.seekable-ranges))
+          (mp.commandv :seek time-pos :absolute)
+          (msg.warn (string.format "Seek near point, offset %f s" time-pos)))
+      (mp.unregister_event seek-after-load)))
+
+  (mp.register_event :file-loaded seek-after-load))
+
+(mp.register_script_message "yp:rewind-finished" handle-finished-rewind)
