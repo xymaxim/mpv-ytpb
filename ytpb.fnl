@@ -80,6 +80,10 @@
   (draw-clock)
   (set state.clock-timer (mp.add_periodic_timer 1 draw-clock)))
 
+(fn stop-clock []
+  (state.clock-timer:stop)
+  (state.clock-overlay:remove))
+
 ;;: Mark mode
 
 (fn enable-mark-mode []
@@ -256,6 +260,7 @@
                 :default_text now
                 :cursor_position 12
                 :submit (fn [value]
+                          (stop-clock)
                           (mp.commandv :script-message "yp:rewind" value)
                           (input.terminate))})))
 

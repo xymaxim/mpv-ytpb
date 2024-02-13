@@ -77,6 +77,10 @@ local function start_clock()
   state["clock-timer"] = mp.add_periodic_timer(1, draw_clock)
   return nil
 end
+local function stop_clock()
+  do end (state["clock-timer"]):stop()
+  return (state["clock-overlay"]):remove()
+end
 local function enable_mark_mode()
   if (nil == state["mark-overlay"]) then
     state["mark-overlay"] = mp.create_osd_overlay("ass-events")
@@ -303,6 +307,7 @@ end
 local function rewind_key_handler()
   local now = os.date("!%Y%m%dT%H%z")
   local function _32_(value)
+    stop_clock()
     mp.commandv("script-message", "yp:rewind", value)
     return input.terminate()
   end
