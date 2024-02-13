@@ -99,17 +99,16 @@
 
 (fn render-mark-overlay []
   (local point-labels [:A :B])
-  (var content "{\\an8}Mark mode\\N")
+  (local content ["{\\an8}Mark mode"])
   (each [i point (ipairs state.marked-points)]
     (let [point-label (string.format (if (= i state.current-mark) "(%s)"
                                          "\\h%s\\h")
                                      (. point-labels i))
           point-string (point:format settings.utc-offset)]
-      (set content
-           (.. content
-               (string.format "{\\an8}{\\fnmonospace}%s %s\\N"
-                              (fs 28 point-label) (fs 28 point-string))))))
-  content)
+      (table.insert content
+                    (string.format "{\\an8}{\\fnmonospace}%s %s"
+                                   (fs 28 point-label) (fs 28 point-string)))))
+  (table.concat content "\\N"))
 
 (fn display-mark-overlay []
   (set state.mark-overlay.data (render-mark-overlay))

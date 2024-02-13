@@ -100,7 +100,7 @@ local function disable_mark_mode()
 end
 local function render_mark_overlay()
   local point_labels = {"A", "B"}
-  local content = "{\\an8}Mark mode\\N"
+  local content = {"{\\an8}Mark mode"}
   for i, point in ipairs(state["marked-points"]) do
     local point_label
     local _7_
@@ -111,9 +111,9 @@ local function render_mark_overlay()
     end
     point_label = string.format(_7_, point_labels[i])
     local point_string = point:format(settings["utc-offset"])
-    content = (content .. string.format("{\\an8}{\\fnmonospace}%s %s\\N", fs(28, point_label), fs(28, point_string)))
+    table.insert(content, string.format("{\\an8}{\\fnmonospace}%s %s", fs(28, point_label), fs(28, point_string)))
   end
-  return content
+  return table.concat(content, "\\N")
 end
 local function display_mark_overlay()
   state["mark-overlay"].data = render_mark_overlay()
