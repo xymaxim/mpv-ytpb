@@ -41,13 +41,19 @@
 (fn fs [size value]
   (string.format "{\\fs%s}%s" size value))
 
+(fn timestamp->isodate [value]
+  (os.date "!%Y%m%dT%H%M%S%z" value))
+
 (fn parse-mpd-start-time [content]
-  (local offset (- (os.time) (os.time (os.date :!*t))))
-  (let [(_ _ start-time-str) (content:find "availabilityStartTime=\"(.+)\"")
-        date-pattern "(%d+)-(%d+)-(%d+)T(%d+):(%d+):(%d+)+00:00"
-        (year month day hour min sec) (string.match start-time-str date-pattern)]
-    (let [sec (+ sec offset)]
-      (os.time {: year : month : day : hour : min : sec}))))
+  (fn isodate->timestamp [value]
+    (let [offset (- (os.time) (os.time (os.date :!*t)))
+          pattern "(%d+)-(%d+)-(%d+)T(%d+):(%d+):(%d+)+00:00"
+          (year month day hour min sec) (string.match value pattern)
+          sec (+ sec offset)]
+      (os.time {: year : month : day : hour : min : sec})))
+
+  (let [(_ _ start-time-str) (content:find "availabilityStartTime=\"(.+)\"")]
+    (isodate->timestamp start-time-str)))
 
 (fn update-current-mpd []
   (set state.current-mpd-path (mp.get_property :path))
@@ -152,9 +158,12 @@
             (mp.commandv :show-text "Points swapped")))))
   (display-mark-overlay))
 
-(fn rewind [timestamp]
-  (mp.commandv :script-message "yp:rewind"
-               (os.date "!%Y-%m-%dT%H:%M:%S%z" timestamp)))
+(fn request-rewind [timestamp]
+  (mp.osd_message :Rewinding... 999)
+  (mp.set_property_native :pause true)
+  (if (state.clock-timer:is_enabled)
+      (stop-clock))
+  (mp.commandv :script-message "yp:rewind" timestamp))
 
 (fn go-to-point [index]
   (local point (?. state.marked-points index))
@@ -164,7 +173,7 @@
         (let [mpd-start-time point.start-time]
           (if (= state.current-mpd-path point.mpd-path)
               (mp.commandv :seek (tostring point.time-pos) :absolute)
-              (rewind point.timestamp)))
+              (request-rewind (timestamp->isodate point.timestamp))))
         (set state.current-mark index)
         (display-mark-overlay)
         (if (state.clock-timer:is_enabled)
@@ -259,10 +268,35 @@
                 :default_text now
                 :cursor_position 12
                 :submit (fn [value]
-                          (stop-clock)
-                          (mp.commandv :script-message "yp:rewind" value)
-                          (mp.osd_message :Rewinding... 999)
+                          (request-rewind value)
                           (input.terminate))})))
+
+(fn rewind-finished-handler [mpd-path time-pos]
+  (mp.set_property_native :pause true)
+
+  (fn seek-after-restart []
+    (mp.unregister_event seek-after-restart)
+    (local time-pos (tonumber time-pos))
+    (var seek-timer nil)
+
+    (fn try-to-seek []
+      (local cache-state (mp.get_property_native :demuxer-cache-state))
+      (if (not= 0 (length cache-state.seekable-ranges))
+          (do
+            (seek-timer:kill)
+            (mp.command_native_async [:seek time-pos :absolute]
+                                     (fn []
+                                       (if state.clock-timer
+                                           (do
+                                             (draw-clock)
+                                             (state.clock-timer:resume)))
+                                       (mp.osd_message ""))))))
+
+    (set seek-timer (mp.add_periodic_timer 0.25 try-to-seek)))
+
+  (mp.register_event :playback-restart seek-after-restart))
+
+(mp.register_script_message "yp:rewind-finished" rewind-finished-handler)
 
 (fn seek-forward-key-handler []
   (mp.commandv :script-message "yp:seek" settings.seek_offset))
@@ -351,29 +385,7 @@ show the previously marked points."
 
 (fn on-file-loaded []
   (update-current-mpd)
-  (start-clock))
+  (if (= nil state.clock-timer)
+      (start-clock)))
 
 (mp.register_event :file-loaded on-file-loaded)
-
-(fn rewind-finished-handler [mpd-path time-pos]
-  (mp.set_property_native :pause true)
-
-  (fn seek-after-load []
-    (mp.osd_message :Seeking... 999)
-    (mp.unregister_event seek-after-load)
-    (let [time-pos (tonumber time-pos)]
-      (var seek-timer nil)
-
-      (fn try-to-seek []
-        (local cache-state (mp.get_property_native :demuxer-cache-state))
-        (if (not= 0 (length cache-state.seekable-ranges))
-            (do
-              (seek-timer:kill)
-              (mp.commandv :seek time-pos :absolute)
-              (mp.osd_message ""))))
-
-      (set seek-timer (mp.add_periodic_timer 0.25 try-to-seek))))
-
-  (mp.register_event :file-loaded seek-after-load))
-
-(mp.register_script_message "yp:rewind-finished" rewind-finished-handler)
