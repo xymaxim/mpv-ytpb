@@ -309,6 +309,7 @@ local function rewind_key_handler()
   local function _31_(value)
     stop_clock()
     mp.commandv("script-message", "yp:rewind", value)
+    mp.osd_message("Rewinding...", 999)
     return input.terminate()
   end
   return input.get({prompt = "Rewind date:", default_text = now, cursor_position = 12, submit = _31_})
@@ -423,17 +424,26 @@ local function on_file_loaded()
   return start_clock()
 end
 mp.register_event("file-loaded", on_file_loaded)
-local function handle_finished_rewind(mpd_path, time_pos)
+local function rewind_finished_handler(mpd_path, time_pos)
+  mp.set_property_native("pause", true)
   local function seek_after_load()
+    mp.osd_message("Seeking...", 999)
+    mp.unregister_event(seek_after_load)
     local time_pos0 = tonumber(time_pos)
-    local cache_state = mp.get_property_native("demuxer-cache-state")
-    if (0 ~= #cache_state["seekable-ranges"]) then
-      mp.commandv("seek", time_pos0, "absolute")
-    else
-      msg.warn(string.format("Seek near point, offset %f s", time_pos0))
+    local seek_timer = nil
+    local function try_to_seek()
+      local cache_state = mp.get_property_native("demuxer-cache-state")
+      if (0 ~= #cache_state["seekable-ranges"]) then
+        seek_timer:kill()
+        mp.commandv("seek", time_pos0, "absolute")
+        return mp.osd_message("")
+      else
+        return nil
+      end
     end
-    return mp.unregister_event(seek_after_load)
+    seek_timer = mp.add_periodic_timer(0.25, try_to_seek)
+    return nil
   end
   return mp.register_event("file-loaded", seek_after_load)
 end
-return mp.register_script_message("yp:rewind-finished", handle_finished_rewind)
+return mp.register_script_message("yp:rewind-finished", rewind_finished_handler)

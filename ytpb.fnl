@@ -261,6 +261,7 @@
                 :submit (fn [value]
                           (stop-clock)
                           (mp.commandv :script-message "yp:rewind" value)
+                          (mp.osd_message :Rewinding... 999)
                           (input.terminate))})))
 
 (fn seek-forward-key-handler []
@@ -354,15 +355,25 @@ show the previously marked points."
 
 (mp.register_event :file-loaded on-file-loaded)
 
-(fn handle-finished-rewind [mpd-path time-pos]
+(fn rewind-finished-handler [mpd-path time-pos]
+  (mp.set_property_native :pause true)
+
   (fn seek-after-load []
-    (let [time-pos (tonumber time-pos)
-          cache-state (mp.get_property_native :demuxer-cache-state)]
-      (if (not= 0 (length cache-state.seekable-ranges))
-          (mp.commandv :seek time-pos :absolute)
-          (msg.warn (string.format "Seek near point, offset %f s" time-pos)))
-      (mp.unregister_event seek-after-load)))
+    (mp.osd_message :Seeking... 999)
+    (mp.unregister_event seek-after-load)
+    (let [time-pos (tonumber time-pos)]
+      (var seek-timer nil)
+
+      (fn try-to-seek []
+        (local cache-state (mp.get_property_native :demuxer-cache-state))
+        (if (not= 0 (length cache-state.seekable-ranges))
+            (do
+              (seek-timer:kill)
+              (mp.commandv :seek time-pos :absolute)
+              (mp.osd_message ""))))
+
+      (set seek-timer (mp.add_periodic_timer 0.25 try-to-seek))))
 
   (mp.register_event :file-loaded seek-after-load))
 
-(mp.register_script_message "yp:rewind-finished" handle-finished-rewind)
+(mp.register_script_message "yp:rewind-finished" rewind-finished-handler)
