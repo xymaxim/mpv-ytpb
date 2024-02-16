@@ -25,7 +25,9 @@ Point.new = function(self, time_pos, start_time, mpd_path)
 end
 Point.format = function(self, _3futc_offset)
   _G.assert((nil ~= self), "Missing argument self on ytpb.fnl:34")
-  return os.date("!%Y-%m-%d %H:%M:%S", (self.timestamp + (_3futc_offset or 0)))
+  local seconds = (math.floor(self.timestamp) + (_3futc_offset or 0))
+  local milliseconds = (self.timestamp % 1)
+  return (os.date("!%Y-%m-%d %H:%M:%S", seconds) .. "." .. string.sub(string.format("%.3f", milliseconds), 3))
 end
 local function b(value)
   return string.format("{\\b1}%s{\\b0}", value)
@@ -83,7 +85,7 @@ end
 local function draw_clock()
   local time_pos = mp.get_property_native("time-pos", 0)
   local time_string = format_clock_time_string((time_pos + state["current-start-time"]))
-  local ass_text = string.format("{\\an9\\bord10\\3c&H908070&}%s", time_string)
+  local ass_text = string.format("{\\an9\\bord2.2}%s", time_string)
   state["clock-overlay"].data = ass_text
   return (state["clock-overlay"]):update()
 end
@@ -116,7 +118,7 @@ local function disable_mark_mode()
 end
 local function render_mark_overlay()
   local point_labels = {"A", "B"}
-  local lines = {"{\\an8}Mark mode"}
+  local lines = {"{\\an8\\bord2.2}Mark mode"}
   for i, point in ipairs(state["marked-points"]) do
     local point_label_template
     if (i == state["current-mark"]) then
@@ -126,7 +128,7 @@ local function render_mark_overlay()
     end
     local point_label = string.format(point_label_template, point_labels[i])
     local point_string = point:format(settings["utc-offset"])
-    table.insert(lines, string.format("{\\an8}{\\fnmonospace}%s %s", fs(28, point_label), fs(28, point_string)))
+    table.insert(lines, string.format("{\\an8\\fnmonospace}%s %s", fs(28, point_label), fs(28, point_string)))
   end
   return table.concat(lines, "\\N")
 end
@@ -345,7 +347,7 @@ local function stack_columns(...)
   return lines
 end
 local function display_main_overlay()
-  local line_tags = "{\\an4}{\\fnmonospace}"
+  local ass_tags = "{\\an4\\fnmonospace\\bord2.2}"
   local rewind_column = {header = "Rewind and seek", keys = {r = "rewind", ["</>"] = "seek backward/forward", O = "change seek offset"}}
   local mark_mode_column = {header = "Mark mode", keys = {m = "mark new point", e = "edit point", ["a/b"] = "go to point A/B"}}
   local other_column = {header = "Other", keys = {s = "take a screenshot", C = "toggle clock", T = "change timezone", q = "quit"}}
@@ -359,7 +361,7 @@ local function display_main_overlay()
       local tbl_18_auto = {}
       local i_19_auto = 0
       for _, line in ipairs(stacked_columns) do
-        local val_20_auto = string.format("{\\an4}{\\fnmonospace}%s", line)
+        local val_20_auto = (ass_tags .. line)
         if (nil ~= val_20_auto) then
           i_19_auto = (i_19_auto + 1)
           do end (tbl_18_auto)[i_19_auto] = val_20_auto

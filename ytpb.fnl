@@ -84,7 +84,7 @@
   (let [time-pos (mp.get_property_native :time-pos 0)
         time-string (format-clock-time-string (+ time-pos
                                                  state.current-start-time))
-        ass-text (string.format "{\\an9\\bord10\\3c&H908070&}%s" time-string)]
+        ass-text (string.format "{\\an9\\bord2.2}%s" time-string)]
     (set state.clock-overlay.data ass-text)
     (state.clock-overlay:update)))
 
@@ -112,13 +112,13 @@
 
 (fn render-mark-overlay []
   (local point-labels [:A :B])
-  (local lines ["{\\an8}Mark mode"])
+  (local lines ["{\\an8\\bord2.2}Mark mode"])
   (each [i point (ipairs state.marked-points)]
     (let [point-label-template (if (= i state.current-mark) "(%s)" "\\h%s\\h")
           point-label (string.format point-label-template (. point-labels i))
           point-string (point:format settings.utc-offset)]
       (table.insert lines
-                    (string.format "{\\an8}{\\fnmonospace}%s %s"
+                    (string.format "{\\an8\\fnmonospace}%s %s"
                                    (fs 28 point-label) (fs 28 point-string)))))
   (table.concat lines "\\N"))
 
@@ -285,7 +285,7 @@
   lines)
 
 (fn display-main-overlay []
-  (local line-tags "{\\an4}{\\fnmonospace}")
+  (local ass-tags "{\\an4\\fnmonospace\\bord2.2}")
   (local rewind-column {:header "Rewind and seek"
                         :keys {:r :rewind
                                :</> "seek backward/forward"
@@ -305,8 +305,7 @@
                                        mark-mode-column-lines other-column-lines)]
     (set state.main-overlay.data
          (table.concat (icollect [_ line (ipairs stacked_columns)]
-                         (string.format "{\\an4}{\\fnmonospace}%s" line))
-                       "\\N")))
+                         (.. ass-tags line)) "\\N")))
   (state.main-overlay:update))
 
 ;;; Setup
