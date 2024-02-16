@@ -488,7 +488,7 @@ local function _52_()
   if not state["activated?"] then
     return activate()
   else
-    return nil
+    return deactivate()
   end
 end
 mp.add_forced_key_binding("Ctrl+p", "activate", _52_)

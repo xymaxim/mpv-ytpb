@@ -407,7 +407,8 @@ show the previously marked points."
 (mp.add_forced_key_binding :Ctrl+p :activate
                            (fn []
                              (if (not state.activated?)
-                                 (activate))))
+                                 (activate)
+                                 (deactivate))))
 
 (fn on-file-loaded []
   (update-current-mpd)
