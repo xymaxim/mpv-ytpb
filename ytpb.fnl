@@ -26,6 +26,7 @@
 (lambda Point.new [self time-pos start-time mpd-path]
   (local obj {: time-pos : start-time : mpd-path})
   (set obj.timestamp (+ obj.start-time obj.time-pos))
+  (set obj.rewound? false)
   (setmetatable obj self)
   (set self.__index self)
   obj)
@@ -121,7 +122,6 @@
   (state.mark-overlay:update))
 
 (fn mark-new-point []
-  (local cache-state (mp.get_property_native :demuxer-cache-state))
   (if (not state.mark-mode-enabled?)
       (enable-mark-mode))
   (let [time-pos (mp.get_property_native :time-pos)
@@ -154,7 +154,8 @@
       (if (and b (> a.timestamp b.timestamp))
           (do
             (set state.marked-points [b a])
-            (set state.current-mark (if (= timestamp b.timestamp) 1 2))
+            (set state.current-mark (if (= new-point.timestamp b.timestamp) 1
+                                        2))
             (mp.commandv :show-text "Points swapped")))))
   (display-mark-overlay))
 
@@ -169,39 +170,35 @@
       (if (not= 0 (length cache-state.seekable-ranges))
           (do
             (seek-timer:kill)
-            (mp.command_native_async [:seek time-pos :absolute]
-                                     (fn []
-                                       (if state.clock-timer
-                                           (do
-                                             (draw-clock)
-                                             (state.clock-timer:resume)))
-                                       (mp.osd_message ""))))))
+            (fn callback [name value]
+              (if (= value true)
+                  (lua :return))
+              (mp.unobserve_property callback)
+              (if state.clock-timer
+                  (do
+                    (draw-clock)
+                    (state.clock-timer:resume)
+                    (mp.osd_message ""))))
 
-    (set seek-timer (mp.add_periodic_timer 0.25 try-to-seek)))
+            (mp.observe_property :seeking :bool callback)
+            (mp.commandv :seek time-pos :absolute))))
+
+    (set seek-timer (mp.add_periodic_timer 0.2 try-to-seek)))
 
   (mp.register_event :playback-restart seek-after-restart))
 
 (fn load-and-seek-to-point [point]
-  (mp.osd_message :Rewinding... 999)
-  (register-seek-after-restart)
+  (mp.osd_message "Seeking to point..." 999)
+  (register-seek-after-restart point.time-pos)
   (mp.commandv :loadfile point.mpd-path :replace))
 
-(fn rewind-finished-handler [mpd-path time-pos]
-  (mp.set_property_native :pause true)
-  (register-seek-after-restart time-pos))
-
-(fn request-rewind [timestamp]
+(fn request-rewind [timestamp callback]
   (mp.osd_message :Rewinding... 999)
   (mp.set_property_native :pause true)
   (if (state.clock-timer:is_enabled)
       (stop-clock))
+  (mp.register_script_message "yp:rewind-completed" callback)
   (mp.commandv :script-message "yp:rewind" timestamp))
-
-;; (fn rewind-finished-handler [mpd-path time-pos]
-;;   (mp.set_property_native :pause true)
-;;   (register-seek-after-restart time-pos))
-
-;; (mp.register_script_message "yp:rewind-finished" rewind-finished-handler)
 
 (fn go-to-point [index]
   (local point (?. state.marked-points index))
@@ -216,12 +213,12 @@
                   (load-and-seek-to-point point)
                   (do
                     (fn callback [mpd-path time-pos]
-                      (mp.unregister_script_message "yp:rewind-finished")
-                      (mp.set_property_native :pause true)
+                      (mp.unregister_script_message "yp:rewind-completed")
                       (register-seek-after-restart time-pos)
-                      (set point.time-pos time-pos))
-                    (mp.register_script_message "yp:rewind-finished" callback)
-                    (request-rewind (timestamp->isodate point.timestamp))))))
+                      (set point.time-pos time-pos)
+                      (set point.rewound? true))
+                    (request-rewind (timestamp->isodate point.timestamp)
+                                    callback)))))
         (display-mark-overlay)
         (if (state.clock-timer:is_enabled)
             (draw-clock)))
@@ -310,19 +307,17 @@
 ;;; Setup
 
 (fn rewind-key-handler []
+  (mp.set_property_native :pause true)
   (let [now (os.date "!%Y%m%dT%H%z")]
     (input.get {:prompt "Rewind date:"
                 :default_text now
                 :cursor_position 12
                 :submit (fn [value]
                           (fn callback [mpd-path time-pos]
-                            (mp.unregister_script_message "yp:rewind-finished")
-                            (mp.set_property_native :pause true)
+                            (mp.unregister_script_message "yp:rewind-completed")
                             (register-seek-after-restart time-pos))
 
-                          (mp.register_script_message "yp:rewind-finished"
-                                                      callback)
-                          (request-rewind value)
+                          (request-rewind value callback)
                           (input.terminate))})))
 
 (fn seek-forward-key-handler []
