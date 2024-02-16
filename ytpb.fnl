@@ -48,12 +48,14 @@
 (fn parse-mpd-start-time [content]
   (fn isodate->timestamp [value]
     (let [offset (- (os.time) (os.time (os.date :!*t)))
-          pattern "(%d+)-(%d+)-(%d+)T(%d+):(%d+):(%d+)+00:00"
-          (year month day hour min sec) (string.match value pattern)
-          sec (+ sec offset)]
-      (os.time {: year : month : day : hour : min : sec})))
+          pattern "(%d+)-(%d+)-(%d+)T(%d+):(%d+):(%d+)%.?(%d*)+00:00"
+          (year month day hour min sec ms) (string.match value pattern)
+          sec (+ sec offset)
+          ms (tonumber ms)]
+      (+ (os.time {: year : month : day : hour : min : sec})
+         (if ms (/ ms 1000) 0))))
 
-  (let [(_ _ start-time-str) (content:find "availabilityStartTime=\"(.+)\"")]
+  (let [(_ _ start-time-str) (content:find "availabilityStartTime=\"([^\"]+)\"")]
     (isodate->timestamp start-time-str)))
 
 (fn update-current-mpd []
