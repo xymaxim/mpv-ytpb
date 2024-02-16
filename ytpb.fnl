@@ -32,7 +32,10 @@
   obj)
 
 (lambda Point.format [self ?utc-offset]
-  (os.date "!%Y-%m-%d %H:%M:%S" (+ self.timestamp (or ?utc-offset 0))))
+  (let [seconds (+ (math.floor self.timestamp) (or ?utc-offset 0))
+        milliseconds (% self.timestamp 1)]
+    (.. (os.date "!%Y-%m-%d %H:%M:%S" seconds) "."
+        (string.sub (string.format "%.3f" milliseconds) 3))))
 
 ;;; Utility functions
 
