@@ -134,7 +134,7 @@ local function display_mark_overlay()
   state["mark-overlay"].data = render_mark_overlay()
   return (state["mark-overlay"]):update()
 end
-local function mark_new_point()
+local function mark_point()
   if not state["mark-mode-enabled?"] then
     enable_mark_mode()
   else
@@ -447,7 +447,7 @@ local function activate()
   key_binds["<"] = {"seek-backward", seek_backward_key_handler}
   key_binds[">"] = {"seek-forward", seek_forward_key_handler}
   key_binds["O"] = {"change-seek-offset", change_seek_offset_key_handler}
-  key_binds["m"] = {"mark-new-point", mark_new_point}
+  key_binds["m"] = {"mark-point", mark_point}
   local function _45_()
     if state["mark-mode-enabled?"] then
       return edit_point()

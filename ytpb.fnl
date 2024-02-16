@@ -123,7 +123,7 @@
   (set state.mark-overlay.data (render-mark-overlay))
   (state.mark-overlay:update))
 
-(fn mark-new-point []
+(fn mark-point []
   (if (not state.mark-mode-enabled?)
       (enable-mark-mode))
   (let [time-pos (mp.get_property_native :time-pos)
@@ -382,7 +382,7 @@ show the previously marked points."
   (tset key-binds "<" [:seek-backward seek-backward-key-handler])
   (tset key-binds ">" [:seek-forward seek-forward-key-handler])
   (tset key-binds :O [:change-seek-offset change-seek-offset-key-handler])
-  (tset key-binds :m [:mark-new-point mark-new-point])
+  (tset key-binds :m [:mark-point mark-point])
   (tset key-binds :e
         [:edit-point
          (fn []
