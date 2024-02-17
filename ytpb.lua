@@ -3,7 +3,7 @@ local msg = require("mp.msg")
 local options = require("mp.options")
 local input = require("mp.input")
 local state = {["current-mpd-path"] = nil, ["current-start-time"] = nil, ["main-overlay"] = nil, ["mark-overlay"] = nil, ["marked-points"] = {}, ["current-mark"] = nil, ["clock-overlay"] = nil, ["clock-timer"] = nil, ["activated?"] = false, ["mark-mode-enabled?"] = false}
-local settings = {seek_offset = "10m", ["utc-offset"] = nil}
+local settings = {["seek-offset"] = 3600, ["utc-offset"] = nil}
 if (nil == settings["utc-offset"]) then
   local local_offset = (os.time() - os.time(os.date("!*t")))
   settings["utc-offset"] = local_offset
@@ -68,19 +68,42 @@ local function update_current_mpd()
     return nil
   end
 end
+local function seek_offset__3eseconds(value)
+  local total_seconds = 0
+  do
+    local pattern = "(%d+%.?%d*)(%a*)"
+    local symbols = {d = 86400, h = 3600, m = 60, s = 1}
+    for number, symbol in string.gmatch(value, pattern) do
+      local function _5_()
+        local x = symbol
+        return symbols[x]
+      end
+      if ((nil ~= symbol) and _5_()) then
+        local x = symbol
+        total_seconds = (total_seconds + (number * symbols[x]))
+      elseif (symbol == "") then
+        error({msg = "Time symbol is missing"})
+      else
+        local _ = symbol
+        error({msg = ("Unknown time symbol: " .. symbol)})
+      end
+    end
+  end
+  return total_seconds
+end
 local function format_clock_time_string(timestamp)
   local date_time_part = os.date("!%Y-%m-%d %H:%M:%S", (timestamp + settings["utc-offset"]))
   local hours = math.floor((settings["utc-offset"] / 3600))
   local minutes = math.floor(((settings["utc-offset"] % 3600) / 60))
   local hh_part = string.format("%+03d", hours)
-  local function _5_()
+  local function _7_()
     if (0 > minutes) then
       return string.format(":%02d", minutes)
     else
       return ""
     end
   end
-  return (string.format("%s%s", date_time_part, hh_part) .. _5_())
+  return (string.format("%s%s", date_time_part, hh_part) .. _7_())
 end
 local function draw_clock()
   local time_pos = mp.get_property_native("time-pos", 0)
@@ -144,16 +167,16 @@ local function mark_point()
   do
     local time_pos = mp.get_property_native("time-pos")
     local new_point = Point:new(time_pos, state["current-start-time"], state["current-mpd-path"])
-    local _10_ = state["marked-points"]
-    if (((_G.type(_10_) == "table") and (_10_[1] == nil)) or ((_G.type(_10_) == "table") and (nil ~= _10_[1]) and (nil ~= _10_[2]))) then
+    local _12_ = state["marked-points"]
+    if (((_G.type(_12_) == "table") and (_12_[1] == nil)) or ((_G.type(_12_) == "table") and (nil ~= _12_[1]) and (nil ~= _12_[2]))) then
       state["marked-points"][1] = new_point
       state["current-mark"] = 1
       if b then
         state["marked-points"][2] = nil
       else
       end
-    elseif ((_G.type(_10_) == "table") and (nil ~= _10_[1]) and (_10_[2] == nil)) then
-      local a = _10_[1]
+    elseif ((_G.type(_12_) == "table") and (nil ~= _12_[1]) and (_12_[2] == nil)) then
+      local a = _12_[1]
       if (new_point.timestamp >= a.timestamp) then
         state["marked-points"][2] = new_point
         state["current-mark"] = 2
@@ -173,9 +196,9 @@ local function edit_point()
     local new_point = Point:new(time_pos, state["current-start-time"], state["current-mpd-path"])
     local time_string = new_point:format(settings["utc-offset"])
     do end (state["marked-points"])[state["current-mark"]] = new_point
-    local _let_14_ = state["marked-points"]
-    local a = _let_14_[1]
-    local b0 = _let_14_[2]
+    local _let_16_ = state["marked-points"]
+    local a = _let_16_[1]
+    local b0 = _let_16_[2]
     if (b0 and (a.timestamp > b0.timestamp)) then
       state["marked-points"] = {b0, a}
       if (new_point.timestamp == b0.timestamp) then
@@ -241,12 +264,12 @@ end
 local function go_to_point(index)
   local point
   do
-    local t_21_ = state["marked-points"]
-    if (nil ~= t_21_) then
-      t_21_ = t_21_[index]
+    local t_23_ = state["marked-points"]
+    if (nil ~= t_23_) then
+      t_23_ = t_23_[index]
     else
     end
-    point = t_21_
+    point = t_23_
   end
   if point then
     state["current-mark"] = index
@@ -302,11 +325,11 @@ local function render_column(column, keys_order)
   local aligned_key = nil
   for _, key in ipairs(keys_order) do
     local aligned_key0 = (string.rep("\\h", (max_key_length - #key)) .. key)
-    local function _29_()
+    local function _31_()
       local desc = column.keys[key]
       return string.format("%s%s%s", fs(key_font_size, b(aligned_key0)), fs(main_font_size, (" " .. desc)), string.rep(" ", (right_margin + (max_desc_length - #desc))))
     end
-    table.insert(rendered_lines, _29_())
+    table.insert(rendered_lines, _31_())
   end
   return rendered_lines
 end
@@ -314,7 +337,7 @@ local function stack_columns(...)
   local lines = {}
   do
     local max_column_size
-    local function _30_(...)
+    local function _32_(...)
       local tbl_18_auto = {}
       local i_19_auto = 0
       for _, column in ipairs({...}) do
@@ -327,19 +350,19 @@ local function stack_columns(...)
       end
       return tbl_18_auto
     end
-    max_column_size = math.max(table.unpack(_30_(...)))
+    max_column_size = math.max(table.unpack(_32_(...)))
     for i = 1, max_column_size do
       local line = ""
       for _, column in pairs({...}) do
-        local function _32_(...)
-          local t_33_ = column
-          if (nil ~= t_33_) then
-            t_33_ = t_33_[i]
+        local function _34_(...)
+          local t_35_ = column
+          if (nil ~= t_35_) then
+            t_35_ = t_35_[i]
           else
           end
-          return t_33_
+          return t_35_
         end
-        line = (line .. (_32_() or string.format("{\\alpha&HFF&}%s{\\alpha&H00&}", column[1])))
+        line = (line .. (_34_() or string.format("{\\alpha&HFF&}%s{\\alpha&H00&}", column[1])))
       end
       table.insert(lines, line)
     end
@@ -356,7 +379,7 @@ local function display_main_overlay()
   local other_column_lines = render_column(other_column, {"s", "C", "T", "q"})
   do
     local stacked_columns = stack_columns(rewind_column_lines, mark_mode_column_lines, other_column_lines)
-    local _35_
+    local _37_
     do
       local tbl_18_auto = {}
       local i_19_auto = 0
@@ -368,16 +391,16 @@ local function display_main_overlay()
         else
         end
       end
-      _35_ = tbl_18_auto
+      _37_ = tbl_18_auto
     end
-    state["main-overlay"].data = table.concat(_35_, "\\N")
+    state["main-overlay"].data = table.concat(_37_, "\\N")
   end
   return (state["main-overlay"]):update()
 end
 local function rewind_key_handler()
   mp.set_property_native("pause", true)
   local now = os.date("!%Y%m%dT%H%z")
-  local function _37_(value)
+  local function _39_(value)
     local function callback(mpd_path, time_pos)
       mp.unregister_script_message("yp:rewind-completed")
       return register_seek_after_restart(time_pos)
@@ -385,24 +408,31 @@ local function rewind_key_handler()
     request_rewind(value, callback)
     return input.terminate()
   end
-  return input.get({prompt = "Rewind date:", default_text = now, cursor_position = 12, submit = _37_})
+  return input.get({prompt = "Rewind date:", default_text = now, cursor_position = 12, submit = _39_})
 end
 local function seek_forward_key_handler()
-  return mp.commandv("script-message", "yp:seek", settings.seek_offset)
 end
 local function seek_backward_key_handler()
-  return mp.commandv("script-message", "yp:seek", ("-" .. settings.seek_offset))
+  mp.osd_message("Seeking backward...", 999)
+  local function callback(_, time_pos)
+    mp.unregister_script_message("yp:rewind-completed")
+    return register_seek_after_restart(time_pos)
+  end
+  local cur_time_pos = mp.get_property_native("time-pos")
+  local cur_timestamp = (state["current-start-time"] + cur_time_pos)
+  return request_rewind(timestamp__3eisodate((cur_timestamp - settings["seek-offset"])), callback)
 end
 local function change_seek_offset_key_handler()
   local function submit_function(value)
-    if string.find(value, "[dhms]") then
-      settings.seek_offset = value
+    local ok_3f, value_or_error = pcall(seek_offset__3eseconds, value)
+    if ok_3f then
+      settings["seek-offset"] = value_or_error
       return input.terminate()
     else
-      return input.log_error("Invalid value, should be [%dd][%Hh][%Mm][%Ss]")
+      return input.log_error(value_or_error.msg)
     end
   end
-  return input.get({prompt = "New seek offset:", default_text = settings.seek_offset, submit = submit_function})
+  return input.get({prompt = "New seek offset:", default_text = "1h", submit = submit_function})
 end
 local function take_screenshot_key_handler()
   return mp.commandv("script-message", "yp:take-screenshot")
@@ -417,7 +447,7 @@ local function toggle_clock_key_handler()
   end
 end
 local function change_timezone_key_handler()
-  local function _40_(value)
+  local function _42_(value)
     settings["utc-offset"] = (3600 * (tonumber(value) or 0))
     draw_clock()
     if state["mark-mode-enabled?"] then
@@ -426,7 +456,7 @@ local function change_timezone_key_handler()
     end
     return input.terminate()
   end
-  return input.get({prompt = "New timezone offset: UTC", default_text = "+00", cursor_position = 4, submit = _40_})
+  return input.get({prompt = "New timezone offset: UTC", default_text = "+00", cursor_position = 4, submit = _42_})
 end
 local function deactivate()
   state["activated?"] = false
@@ -435,10 +465,10 @@ local function deactivate()
   else
   end
   do end (state["main-overlay"]):remove()
-  for _, _43_ in pairs(key_binds) do
-    local _each_44_ = _43_
-    local name = _each_44_[1]
-    local _0 = _each_44_[2]
+  for _, _45_ in pairs(key_binds) do
+    local _each_46_ = _45_
+    local name = _each_46_[1]
+    local _0 = _each_46_[2]
     mp.remove_key_binding(name)
   end
   return nil
@@ -450,30 +480,30 @@ local function activate()
   key_binds[">"] = {"seek-forward", seek_forward_key_handler}
   key_binds["O"] = {"change-seek-offset", change_seek_offset_key_handler}
   key_binds["m"] = {"mark-point", mark_point}
-  local function _45_()
+  local function _47_()
     if state["mark-mode-enabled?"] then
       return edit_point()
     else
       return mp.commandv("show-text", "No marked points")
     end
   end
-  key_binds["e"] = {"edit-point", _45_}
-  local function _47_()
+  key_binds["e"] = {"edit-point", _47_}
+  local function _49_()
     return go_to_point(1)
   end
-  key_binds["a"] = {"go-to-point-A", _47_}
-  local function _48_()
+  key_binds["a"] = {"go-to-point-A", _49_}
+  local function _50_()
     return go_to_point(2)
   end
-  key_binds["b"] = {"go-to-point-B", _48_}
+  key_binds["b"] = {"go-to-point-B", _50_}
   key_binds["s"] = {"take-screenshot", take_screenshot_key_handler}
   key_binds["C"] = {"toggle-clock", toggle_clock_key_handler}
   key_binds["T"] = {"change-timezone", change_timezone_key_handler}
   key_binds["q"] = {"quit", deactivate}
-  for key, _49_ in pairs(key_binds) do
-    local _each_50_ = _49_
-    local name = _each_50_[1]
-    local func = _each_50_[2]
+  for key, _51_ in pairs(key_binds) do
+    local _each_52_ = _51_
+    local name = _each_52_[1]
+    local func = _each_52_[2]
     mp.add_forced_key_binding(key, name, func)
   end
   state["main-overlay"] = mp.create_osd_overlay("ass-events")
@@ -484,14 +514,14 @@ local function activate()
     return nil
   end
 end
-local function _52_()
+local function _54_()
   if not state["activated?"] then
     return activate()
   else
     return deactivate()
   end
 end
-mp.add_forced_key_binding("Ctrl+p", "activate", _52_)
+mp.add_forced_key_binding("Ctrl+p", "activate", _54_)
 local function on_file_loaded()
   update_current_mpd()
   if (nil == state["clock-timer"]) then

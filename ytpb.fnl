@@ -14,7 +14,7 @@
               :clock-overlay nil
               :clock-timer nil})
 
-(local settings {:seek_offset :10m :utc-offset nil})
+(local settings {:seek-offset 3600 :utc-offset nil})
 (if (= nil settings.utc-offset)
     (let [local-offset (- (os.time) (os.time (os.date :!*t)))]
       (set settings.utc-offset local-offset)))
@@ -67,6 +67,18 @@
     f (do
         (set state.current-start-time (parse-mpd-start-time (f:read :*all)))
         (f:close))))
+
+(fn seek-offset->seconds [value]
+  (var total-seconds 0)
+  (let [pattern "(%d+%.?%d*)(%a*)"
+        symbols {:d 86400 :h 3600 :m 60 :s 1}]
+    (each [number symbol (string.gmatch value pattern)]
+      (case symbol
+        (where x (. symbols x))
+        (set total-seconds (+ total-seconds (* number (. symbols x))))
+        "" (error {:msg "Time symbol is missing"})
+        _ (error {:msg (.. "Unknown time symbol: " symbol)}))))
+  total-seconds)
 
 ;;; Clock
 
@@ -324,22 +336,31 @@
                           (request-rewind value callback)
                           (input.terminate))})))
 
-(fn seek-forward-key-handler []
-  (mp.commandv :script-message "yp:seek" settings.seek_offset))
+(fn seek-forward-key-handler [])
 
 (fn seek-backward-key-handler []
-  (mp.commandv :script-message "yp:seek" (.. "-" settings.seek_offset)))
+  (mp.osd_message "Seeking backward..." 999)
+
+  (fn callback [_ time-pos]
+    (mp.unregister_script_message "yp:rewind-completed")
+    (register-seek-after-restart time-pos))
+
+  (let [cur-time-pos (mp.get_property_native :time-pos)
+        cur-timestamp (+ state.current-start-time cur-time-pos)]
+    (request-rewind (timestamp->isodate (- cur-timestamp settings.seek-offset))
+                    callback)))
 
 (fn change-seek-offset-key-handler []
   (fn submit-function [value]
-    (if (string.find value "[dhms]")
-        (do
-          (set settings.seek_offset value)
-          (input.terminate))
-        (input.log_error "Invalid value, should be [%dd][%Hh][%Mm][%Ss]")))
+    (let [(ok? value-or-error) (pcall seek-offset->seconds value)]
+      (if ok?
+          (do
+            (set settings.seek-offset value-or-error)
+            (input.terminate))
+          (input.log_error value-or-error.msg))))
 
   (input.get {:prompt "New seek offset:"
-              :default_text settings.seek_offset
+              :default_text :1h
               :submit submit-function}))
 
 (fn take-screenshot-key-handler []
