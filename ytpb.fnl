@@ -336,8 +336,6 @@
                           (request-rewind value callback)
                           (input.terminate))})))
 
-(fn seek-forward-key-handler [])
-
 (fn seek-backward-key-handler []
   (mp.osd_message "Seeking backward..." 999)
 
@@ -349,6 +347,20 @@
         cur-timestamp (+ state.current-start-time cur-time-pos)]
     (request-rewind (timestamp->isodate (- cur-timestamp settings.seek-offset))
                     callback)))
+
+(fn seek-forward-key-handler []
+  (mp.osd_message "Seeking forward..." 999)
+
+  (fn callback [_ time-pos]
+    (mp.unregister_script_message "yp:rewind-completed")
+    (register-seek-after-restart time-pos))
+
+  (let [cur-time-pos (mp.get_property_native :time-pos)
+        cur-timestamp (+ state.current-start-time cur-time-pos)
+        target (+ cur-timestamp settings.seek-offset)]
+    (if (< target (os.time))
+        (request-rewind (timestamp->isodate target) callback)
+        (mp.osd_message "Seek forward unavailable"))))
 
 (fn change-seek-offset-key-handler []
   (fn submit-function [value]

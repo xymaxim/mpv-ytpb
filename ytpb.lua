@@ -410,8 +410,6 @@ local function rewind_key_handler()
   end
   return input.get({prompt = "Rewind date:", default_text = now, cursor_position = 12, submit = _39_})
 end
-local function seek_forward_key_handler()
-end
 local function seek_backward_key_handler()
   mp.osd_message("Seeking backward...", 999)
   local function callback(_, time_pos)
@@ -421,6 +419,21 @@ local function seek_backward_key_handler()
   local cur_time_pos = mp.get_property_native("time-pos")
   local cur_timestamp = (state["current-start-time"] + cur_time_pos)
   return request_rewind(timestamp__3eisodate((cur_timestamp - settings["seek-offset"])), callback)
+end
+local function seek_forward_key_handler()
+  mp.osd_message("Seeking forward...", 999)
+  local function callback(_, time_pos)
+    mp.unregister_script_message("yp:rewind-completed")
+    return register_seek_after_restart(time_pos)
+  end
+  local cur_time_pos = mp.get_property_native("time-pos")
+  local cur_timestamp = (state["current-start-time"] + cur_time_pos)
+  local target = (cur_timestamp + settings["seek-offset"])
+  if (target < os.time()) then
+    return request_rewind(timestamp__3eisodate(target), callback)
+  else
+    return mp.osd_message("Seek forward unavailable")
+  end
 end
 local function change_seek_offset_key_handler()
   local function submit_function(value)
@@ -447,7 +460,7 @@ local function toggle_clock_key_handler()
   end
 end
 local function change_timezone_key_handler()
-  local function _42_(value)
+  local function _43_(value)
     settings["utc-offset"] = (3600 * (tonumber(value) or 0))
     draw_clock()
     if state["mark-mode-enabled?"] then
@@ -456,7 +469,7 @@ local function change_timezone_key_handler()
     end
     return input.terminate()
   end
-  return input.get({prompt = "New timezone offset: UTC", default_text = "+00", cursor_position = 4, submit = _42_})
+  return input.get({prompt = "New timezone offset: UTC", default_text = "+00", cursor_position = 4, submit = _43_})
 end
 local function deactivate()
   state["activated?"] = false
@@ -465,10 +478,10 @@ local function deactivate()
   else
   end
   do end (state["main-overlay"]):remove()
-  for _, _45_ in pairs(key_binds) do
-    local _each_46_ = _45_
-    local name = _each_46_[1]
-    local _0 = _each_46_[2]
+  for _, _46_ in pairs(key_binds) do
+    local _each_47_ = _46_
+    local name = _each_47_[1]
+    local _0 = _each_47_[2]
     mp.remove_key_binding(name)
   end
   return nil
@@ -480,30 +493,30 @@ local function activate()
   key_binds[">"] = {"seek-forward", seek_forward_key_handler}
   key_binds["O"] = {"change-seek-offset", change_seek_offset_key_handler}
   key_binds["m"] = {"mark-point", mark_point}
-  local function _47_()
+  local function _48_()
     if state["mark-mode-enabled?"] then
       return edit_point()
     else
       return mp.commandv("show-text", "No marked points")
     end
   end
-  key_binds["e"] = {"edit-point", _47_}
-  local function _49_()
+  key_binds["e"] = {"edit-point", _48_}
+  local function _50_()
     return go_to_point(1)
   end
-  key_binds["a"] = {"go-to-point-A", _49_}
-  local function _50_()
+  key_binds["a"] = {"go-to-point-A", _50_}
+  local function _51_()
     return go_to_point(2)
   end
-  key_binds["b"] = {"go-to-point-B", _50_}
+  key_binds["b"] = {"go-to-point-B", _51_}
   key_binds["s"] = {"take-screenshot", take_screenshot_key_handler}
   key_binds["C"] = {"toggle-clock", toggle_clock_key_handler}
   key_binds["T"] = {"change-timezone", change_timezone_key_handler}
   key_binds["q"] = {"quit", deactivate}
-  for key, _51_ in pairs(key_binds) do
-    local _each_52_ = _51_
-    local name = _each_52_[1]
-    local func = _each_52_[2]
+  for key, _52_ in pairs(key_binds) do
+    local _each_53_ = _52_
+    local name = _each_53_[1]
+    local func = _each_53_[2]
     mp.add_forced_key_binding(key, name, func)
   end
   state["main-overlay"] = mp.create_osd_overlay("ass-events")
@@ -514,14 +527,14 @@ local function activate()
     return nil
   end
 end
-local function _54_()
+local function _55_()
   if not state["activated?"] then
     return activate()
   else
     return deactivate()
   end
 end
-mp.add_forced_key_binding("Ctrl+p", "activate", _54_)
+mp.add_forced_key_binding("Ctrl+p", "activate", _55_)
 local function on_file_loaded()
   update_current_mpd()
   if (nil == state["clock-timer"]) then
