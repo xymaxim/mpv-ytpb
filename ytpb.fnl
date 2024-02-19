@@ -14,6 +14,10 @@
               :clock-overlay nil
               :clock-timer nil})
 
+(local theme {:main-menu-color :FFFFFF
+              :mark-mode-color :FFFFFF
+              :clock-color :FFFFFF})
+
 (local settings {:seek-offset 3600 :utc-offset nil})
 (if (= nil settings.utc-offset)
     (let [local-offset (- (os.time) (os.time (os.date :!*t)))]
@@ -39,11 +43,27 @@
 
 ;;; Utility functions
 
-(fn b [value]
+(fn ass [...]
+  (string.format "{%s}" (table.concat [...])))
+
+(fn ass-b [value]
   (string.format "{\\b1}%s{\\b0}" value))
 
-(fn fs [size value]
+(fn ass-fs [size value]
   (string.format "{\\fs%s}%s" size value))
+
+(fn ass-fs* [size]
+  (string.format "\\fs%s" size))
+
+(fn rgb->bgr [value]
+  (let [(r g b) (string.match value "(%w%w)(%w%w)(%w%w)")]
+    (.. b g r)))
+
+(fn ass-c* [rgb ?tag-prefix]
+  (string.format "\\%dc&H%s&" (or ?tag-prefix 1) (rgb->bgr rgb)))
+
+(fn ass-c [rgb ?tag-prefix]
+  (string.format "{%s}" (ass-c* rgb ?tag-prefix)))
 
 (fn timestamp->isodate [value]
   (os.date "!%Y%m%dT%H%M%S%z" value))
@@ -96,7 +116,8 @@
   (let [time-pos (mp.get_property_native :time-pos 0)
         time-string (format-clock-time-string (+ time-pos
                                                  state.current-start-time))
-        ass-text (string.format "{\\an9\\bord2.2}%s" time-string)]
+        ass-text (.. (ass "\\an9\\bord2" (ass-c* theme.clock-color))
+                     time-string)]
     (set state.clock-overlay.data ass-text)
     (state.clock-overlay:update)))
 
@@ -124,14 +145,18 @@
 
 (fn render-mark-overlay []
   (local point-labels [:A :B])
-  (local lines ["{\\an8\\bord2.2}Mark mode"])
+  (local lines [(string.format "%sMark mode%s"
+                               (ass "\\an8\\bord2" (ass-fs* 34)
+                                    (ass-c* theme.mark-mode-color))
+                               (ass-c :FFFFFF))])
   (each [i point (ipairs state.marked-points)]
     (let [point-label-template (if (= i state.current-mark) "(%s)" "\\h%s\\h")
           point-label (string.format point-label-template (. point-labels i))
           point-string (point:format settings.utc-offset)]
       (table.insert lines
                     (string.format "{\\an8\\fnmonospace}%s %s"
-                                   (fs 28 point-label) (fs 28 point-string)))))
+                                   (ass-fs 28 point-label)
+                                   (ass-fs 28 point-string)))))
   (table.concat lines "\\N"))
 
 (fn display-mark-overlay []
@@ -243,7 +268,7 @@
 
 ;;; Main
 
-(fn render-column [column keys-order]
+(fn render-column [column keys-order ?tags]
   (local right-margin 10)
   (local main-font-size 18)
   (local key-font-size (* 1.2 main-font-size))
@@ -258,11 +283,11 @@
       (if (> desc-length max-desc-length)
           (set max-desc-length desc-length))))
   (table.insert rendered-lines
-                (string.format "%s %s%s%s"
-                               (fs main-font-size (b column.header))
-                               (fs key-font-size
-                                   (b (string.rep " " max-key-length)))
-                               (fs main-font-size "")
+                (string.format "%s%s %s%s%s" ?tags
+                               (ass-fs main-font-size (ass-b column.header))
+                               (ass-fs key-font-size
+                                       (ass-b (string.rep " " max-key-length)))
+                               (ass-fs main-font-size "")
                                (string.rep " "
                                            (+ right-margin
                                               (- max-desc-length
@@ -273,9 +298,9 @@
                           key)]
       (table.insert rendered-lines
                     (let [desc (. column.keys key)]
-                      (string.format "%s%s%s"
-                                     (fs key-font-size (b aligned-key))
-                                     (fs main-font-size (.. " " desc))
+                      (string.format "%s%s%s%s" ?tags
+                                     (ass-fs key-font-size (ass-b aligned-key))
+                                     (ass-fs main-font-size (.. " " desc))
                                      (string.rep " "
                                                  (+ right-margin
                                                     (- max-desc-length
@@ -297,7 +322,8 @@
   lines)
 
 (fn display-main-overlay []
-  (local ass-tags "{\\an4\\fnmonospace\\bord2.2}")
+  (local ass-tags (ass "\\an4\\fnmonospace\\bord2"
+                       (ass-c* theme.main-menu-color)))
   (local rewind-column {:header "Rewind and seek"
                         :keys {:r :rewind
                                :</> "seek backward/forward"
@@ -310,9 +336,15 @@
                               :C "toggle clock"
                               :T "change timezone"
                               :q :quit}})
-  (local rewind-column-lines (render-column rewind-column [:r "</>" :O]))
-  (local mark-mode-column-lines (render-column mark-mode-column [:m :e :a/b]))
-  (local other-column-lines (render-column other-column [:s :C :T :q]))
+  (local rewind-column-lines
+         (render-column rewind-column [:r "</>" :O]
+                        (ass-c theme.main-menu-color)))
+  (local mark-mode-column-lines
+         (render-column mark-mode-column [:m :e :a/b]
+                        (ass-c theme.mark-mode-color)))
+  (local other-column-lines
+         (render-column other-column [:s :C :T :q]
+                        (ass-c theme.main-menu-color)))
   (let [stacked-columns (stack-columns rewind-column-lines
                                        mark-mode-column-lines other-column-lines)]
     (set state.main-overlay.data
