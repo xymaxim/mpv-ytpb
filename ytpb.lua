@@ -2,8 +2,8 @@ local mp = require("mp")
 local msg = require("mp.msg")
 local options = require("mp.options")
 local input = require("mp.input")
+local theme = {["main-menu-color"] = "FFFFFF", ["main-menu-font-size"] = 18, ["mark-mode-color"] = "FFFFFF", ["mark-mode-font-size"] = 28, ["clock-color"] = "FFFFFF", ["clock-font-size"] = 32}
 local state = {["current-mpd-path"] = nil, ["current-start-time"] = nil, ["main-overlay"] = nil, ["mark-overlay"] = nil, ["marked-points"] = {}, ["current-mark"] = nil, ["clock-overlay"] = nil, ["clock-timer"] = nil, ["activated?"] = false, ["mark-mode-enabled?"] = false}
-local theme = {["main-menu-color"] = "FFFFFF", ["mark-mode-color"] = "FFFFFF", ["clock-color"] = "FFFFFF"}
 local settings = {["seek-offset"] = 3600, ["utc-offset"] = nil}
 if (nil == settings["utc-offset"]) then
   local local_offset = (os.time() - os.time(os.date("!*t")))
@@ -13,10 +13,10 @@ end
 local key_binds = {}
 local Point = {}
 Point.new = function(self, time_pos, start_time, mpd_path)
-  _G.assert((nil ~= mpd_path), "Missing argument mpd-path on ytpb.fnl:30")
-  _G.assert((nil ~= start_time), "Missing argument start-time on ytpb.fnl:30")
-  _G.assert((nil ~= time_pos), "Missing argument time-pos on ytpb.fnl:30")
-  _G.assert((nil ~= self), "Missing argument self on ytpb.fnl:30")
+  _G.assert((nil ~= mpd_path), "Missing argument mpd-path on ytpb.fnl:33")
+  _G.assert((nil ~= start_time), "Missing argument start-time on ytpb.fnl:33")
+  _G.assert((nil ~= time_pos), "Missing argument time-pos on ytpb.fnl:33")
+  _G.assert((nil ~= self), "Missing argument self on ytpb.fnl:33")
   local obj = {["time-pos"] = time_pos, ["start-time"] = start_time, ["mpd-path"] = mpd_path}
   obj.timestamp = (obj["start-time"] + obj["time-pos"])
   obj["rewound?"] = false
@@ -25,7 +25,7 @@ Point.new = function(self, time_pos, start_time, mpd_path)
   return obj
 end
 Point.format = function(self, _3futc_offset)
-  _G.assert((nil ~= self), "Missing argument self on ytpb.fnl:38")
+  _G.assert((nil ~= self), "Missing argument self on ytpb.fnl:41")
   local seconds = (math.floor(self.timestamp) + (_3futc_offset or 0))
   local milliseconds = (self.timestamp % 1)
   return (os.date("!%Y-%m-%d %H:%M:%S", seconds) .. "." .. string.sub(string.format("%.3f", milliseconds), 3))
@@ -125,7 +125,7 @@ end
 local function draw_clock()
   local time_pos = mp.get_property_native("time-pos", 0)
   local time_string = format_clock_time_string((time_pos + state["current-start-time"]))
-  local ass_text = (ass("\\an9\\bord2", ass_c_2a(theme["clock-color"])) .. time_string)
+  local ass_text = (ass("\\an9\\bord2", ass_c_2a(theme["clock-color"]), ass_fs_2a(theme["clock-font-size"])) .. time_string)
   state["clock-overlay"].data = ass_text
   return (state["clock-overlay"]):update()
 end
@@ -157,8 +157,9 @@ local function disable_mark_mode()
   end
 end
 local function render_mark_overlay()
+  local header_font_size = (1.2 * theme["mark-mode-font-size"])
   local point_labels = {"A", "B"}
-  local lines = {string.format("%sMark mode%s", ass("\\an8\\bord2", ass_fs_2a(34), ass_c_2a(theme["mark-mode-color"])), ass_c("FFFFFF"))}
+  local lines = {string.format("%sMark mode%s", ass("\\an8\\bord2", ass_fs_2a(header_font_size), ass_c_2a(theme["mark-mode-color"])), ass_c("FFFFFF"))}
   for i, point in ipairs(state["marked-points"]) do
     local point_label_template
     if (i == state["current-mark"]) then
@@ -168,7 +169,7 @@ local function render_mark_overlay()
     end
     local point_label = string.format(point_label_template, point_labels[i])
     local point_string = point:format(settings["utc-offset"])
-    table.insert(lines, string.format("{\\an8\\fnmonospace}%s %s", ass_fs(28, point_label), ass_fs(28, point_string)))
+    table.insert(lines, string.format("{\\an8\\fnmonospace}%s %s", ass_fs(theme["mark-mode-font-size"], point_label), ass_fs(theme["mark-mode-font-size"], point_string)))
   end
   return table.concat(lines, "\\N")
 end
@@ -319,8 +320,7 @@ local function go_to_point(index)
 end
 local function render_column(column, keys_order, _3ftags)
   local right_margin = 10
-  local main_font_size = 18
-  local key_font_size = (1.2 * main_font_size)
+  local key_font_size = (1.2 * theme["main-menu-font-size"])
   local rendered_lines = {}
   local max_key_length = 0
   local max_desc_length = 0
@@ -338,13 +338,13 @@ local function render_column(column, keys_order, _3ftags)
     else
     end
   end
-  table.insert(rendered_lines, string.format("%s%s %s%s%s", _3ftags, ass_fs(main_font_size, ass_b(column.header)), ass_fs(key_font_size, ass_b(string.rep(" ", max_key_length))), ass_fs(main_font_size, ""), string.rep(" ", (right_margin + (max_desc_length - #column.header)))))
+  table.insert(rendered_lines, string.format("%s%s %s%s%s", _3ftags, ass_fs(theme["main-menu-font-size"], ass_b(column.header)), ass_fs(key_font_size, ass_b(string.rep(" ", max_key_length))), ass_fs(theme["main-menu-font-size"], ""), string.rep(" ", (right_margin + (max_desc_length - #column.header)))))
   local aligned_key = nil
   for _, key in ipairs(keys_order) do
     local aligned_key0 = (string.rep("\\h", (max_key_length - #key)) .. key)
     local function _31_()
       local desc = column.keys[key]
-      return string.format("%s%s%s%s", _3ftags, ass_fs(key_font_size, ass_b(aligned_key0)), ass_fs(main_font_size, (" " .. desc)), string.rep(" ", (right_margin + (max_desc_length - #desc))))
+      return string.format("%s%s%s%s", _3ftags, ass_fs(key_font_size, ass_b(aligned_key0)), ass_fs(theme["main-menu-font-size"], (" " .. desc)), string.rep(" ", (right_margin + (max_desc_length - #desc))))
     end
     table.insert(rendered_lines, _31_())
   end

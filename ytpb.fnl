@@ -3,6 +3,13 @@
 (local options (require :mp.options))
 (local input (require :mp.input))
 
+(local theme {:main-menu-color :FFFFFF
+              :main-menu-font-size 18
+              :mark-mode-color :FFFFFF
+              :mark-mode-font-size 28
+              :clock-color :FFFFFF
+              :clock-font-size 32})
+
 (local state {:current-mpd-path nil
               :current-start-time nil
               :activated? false
@@ -13,10 +20,6 @@
               :current-mark nil
               :clock-overlay nil
               :clock-timer nil})
-
-(local theme {:main-menu-color :FFFFFF
-              :mark-mode-color :FFFFFF
-              :clock-color :FFFFFF})
 
 (local settings {:seek-offset 3600 :utc-offset nil})
 (if (= nil settings.utc-offset)
@@ -116,7 +119,8 @@
   (let [time-pos (mp.get_property_native :time-pos 0)
         time-string (format-clock-time-string (+ time-pos
                                                  state.current-start-time))
-        ass-text (.. (ass "\\an9\\bord2" (ass-c* theme.clock-color))
+        ass-text (.. (ass "\\an9\\bord2" (ass-c* theme.clock-color)
+                          (ass-fs* theme.clock-font-size))
                      time-string)]
     (set state.clock-overlay.data ass-text)
     (state.clock-overlay:update)))
@@ -144,9 +148,10 @@
       (state.mark-overlay:remove)))
 
 (fn render-mark-overlay []
+  (local header-font-size (* 1.2 theme.mark-mode-font-size))
   (local point-labels [:A :B])
   (local lines [(string.format "%sMark mode%s"
-                               (ass "\\an8\\bord2" (ass-fs* 34)
+                               (ass "\\an8\\bord2" (ass-fs* header-font-size)
                                     (ass-c* theme.mark-mode-color))
                                (ass-c :FFFFFF))])
   (each [i point (ipairs state.marked-points)]
@@ -155,8 +160,10 @@
           point-string (point:format settings.utc-offset)]
       (table.insert lines
                     (string.format "{\\an8\\fnmonospace}%s %s"
-                                   (ass-fs 28 point-label)
-                                   (ass-fs 28 point-string)))))
+                                   (ass-fs theme.mark-mode-font-size
+                                           point-label)
+                                   (ass-fs theme.mark-mode-font-size
+                                           point-string)))))
   (table.concat lines "\\N"))
 
 (fn display-mark-overlay []
@@ -270,8 +277,7 @@
 
 (fn render-column [column keys-order ?tags]
   (local right-margin 10)
-  (local main-font-size 18)
-  (local key-font-size (* 1.2 main-font-size))
+  (local key-font-size (* 1.2 theme.main-menu-font-size))
   (var rendered-lines [])
   (var max-key-length 0)
   (var max-desc-length 0)
@@ -284,10 +290,11 @@
           (set max-desc-length desc-length))))
   (table.insert rendered-lines
                 (string.format "%s%s %s%s%s" ?tags
-                               (ass-fs main-font-size (ass-b column.header))
+                               (ass-fs theme.main-menu-font-size
+                                       (ass-b column.header))
                                (ass-fs key-font-size
                                        (ass-b (string.rep " " max-key-length)))
-                               (ass-fs main-font-size "")
+                               (ass-fs theme.main-menu-font-size "")
                                (string.rep " "
                                            (+ right-margin
                                               (- max-desc-length
@@ -300,7 +307,8 @@
                     (let [desc (. column.keys key)]
                       (string.format "%s%s%s%s" ?tags
                                      (ass-fs key-font-size (ass-b aligned-key))
-                                     (ass-fs main-font-size (.. " " desc))
+                                     (ass-fs theme.main-menu-font-size
+                                             (.. " " desc))
                                      (string.rep " "
                                                  (+ right-margin
                                                     (- max-desc-length
