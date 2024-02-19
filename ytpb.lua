@@ -3,6 +3,7 @@ local msg = require("mp.msg")
 local options = require("mp.options")
 local input = require("mp.input")
 local state = {["current-mpd-path"] = nil, ["current-start-time"] = nil, ["main-overlay"] = nil, ["mark-overlay"] = nil, ["marked-points"] = {}, ["current-mark"] = nil, ["clock-overlay"] = nil, ["clock-timer"] = nil, ["activated?"] = false, ["mark-mode-enabled?"] = false}
+local theme = {["main-menu-color"] = "FFFFFF", ["mark-mode-color"] = "FFFFFF", ["clock-color"] = "FFFFFF"}
 local settings = {["seek-offset"] = 3600, ["utc-offset"] = nil}
 if (nil == settings["utc-offset"]) then
   local local_offset = (os.time() - os.time(os.date("!*t")))
@@ -12,10 +13,10 @@ end
 local key_binds = {}
 local Point = {}
 Point.new = function(self, time_pos, start_time, mpd_path)
-  _G.assert((nil ~= mpd_path), "Missing argument mpd-path on ytpb.fnl:26")
-  _G.assert((nil ~= start_time), "Missing argument start-time on ytpb.fnl:26")
-  _G.assert((nil ~= time_pos), "Missing argument time-pos on ytpb.fnl:26")
-  _G.assert((nil ~= self), "Missing argument self on ytpb.fnl:26")
+  _G.assert((nil ~= mpd_path), "Missing argument mpd-path on ytpb.fnl:30")
+  _G.assert((nil ~= start_time), "Missing argument start-time on ytpb.fnl:30")
+  _G.assert((nil ~= time_pos), "Missing argument time-pos on ytpb.fnl:30")
+  _G.assert((nil ~= self), "Missing argument self on ytpb.fnl:30")
   local obj = {["time-pos"] = time_pos, ["start-time"] = start_time, ["mpd-path"] = mpd_path}
   obj.timestamp = (obj["start-time"] + obj["time-pos"])
   obj["rewound?"] = false
@@ -24,16 +25,32 @@ Point.new = function(self, time_pos, start_time, mpd_path)
   return obj
 end
 Point.format = function(self, _3futc_offset)
-  _G.assert((nil ~= self), "Missing argument self on ytpb.fnl:34")
+  _G.assert((nil ~= self), "Missing argument self on ytpb.fnl:38")
   local seconds = (math.floor(self.timestamp) + (_3futc_offset or 0))
   local milliseconds = (self.timestamp % 1)
   return (os.date("!%Y-%m-%d %H:%M:%S", seconds) .. "." .. string.sub(string.format("%.3f", milliseconds), 3))
 end
-local function b(value)
+local function ass(...)
+  return string.format("{%s}", table.concat({...}))
+end
+local function ass_b(value)
   return string.format("{\\b1}%s{\\b0}", value)
 end
-local function fs(size, value)
+local function ass_fs(size, value)
   return string.format("{\\fs%s}%s", size, value)
+end
+local function ass_fs_2a(size)
+  return string.format("\\fs%s", size)
+end
+local function rgb__3ebgr(value)
+  local r, g, b = string.match(value, "(%w%w)(%w%w)(%w%w)")
+  return (b .. g .. r)
+end
+local function ass_c_2a(rgb, _3ftag_prefix)
+  return string.format("\\%dc&H%s&", (_3ftag_prefix or 1), rgb__3ebgr(rgb))
+end
+local function ass_c(rgb, _3ftag_prefix)
+  return string.format("{%s}", ass_c_2a(rgb, _3ftag_prefix))
 end
 local function timestamp__3eisodate(value)
   return os.date("!%Y%m%dT%H%M%S%z", value)
@@ -92,7 +109,7 @@ local function seek_offset__3eseconds(value)
   return total_seconds
 end
 local function format_clock_time_string(timestamp)
-  local date_time_part = os.date("!%Y-%m-%d %H:%M:%S", (timestamp + settings["utc-offset"]))
+  local date_time_part = os.date("!%Y\226\128\147%m\226\128\147%d %H:%M:%S", (timestamp + settings["utc-offset"]))
   local hours = math.floor((settings["utc-offset"] / 3600))
   local minutes = math.floor(((settings["utc-offset"] % 3600) / 60))
   local hh_part = string.format("%+03d", hours)
@@ -103,12 +120,12 @@ local function format_clock_time_string(timestamp)
       return ""
     end
   end
-  return (string.format("%s%s", date_time_part, hh_part) .. _7_())
+  return (string.format("%s %s", date_time_part, hh_part) .. _7_())
 end
 local function draw_clock()
   local time_pos = mp.get_property_native("time-pos", 0)
   local time_string = format_clock_time_string((time_pos + state["current-start-time"]))
-  local ass_text = string.format("{\\an9\\bord2.2}%s", time_string)
+  local ass_text = (ass("\\an9\\bord2", ass_c_2a(theme["clock-color"])) .. time_string)
   state["clock-overlay"].data = ass_text
   return (state["clock-overlay"]):update()
 end
@@ -141,7 +158,7 @@ local function disable_mark_mode()
 end
 local function render_mark_overlay()
   local point_labels = {"A", "B"}
-  local lines = {"{\\an8\\bord2.2}Mark mode"}
+  local lines = {string.format("%sMark mode%s", ass("\\an8\\bord2", ass_fs_2a(34), ass_c_2a(theme["mark-mode-color"])), ass_c("FFFFFF"))}
   for i, point in ipairs(state["marked-points"]) do
     local point_label_template
     if (i == state["current-mark"]) then
@@ -151,7 +168,7 @@ local function render_mark_overlay()
     end
     local point_label = string.format(point_label_template, point_labels[i])
     local point_string = point:format(settings["utc-offset"])
-    table.insert(lines, string.format("{\\an8\\fnmonospace}%s %s", fs(28, point_label), fs(28, point_string)))
+    table.insert(lines, string.format("{\\an8\\fnmonospace}%s %s", ass_fs(28, point_label), ass_fs(28, point_string)))
   end
   return table.concat(lines, "\\N")
 end
@@ -171,7 +188,7 @@ local function mark_point()
     if (((_G.type(_12_) == "table") and (_12_[1] == nil)) or ((_G.type(_12_) == "table") and (nil ~= _12_[1]) and (nil ~= _12_[2]))) then
       state["marked-points"][1] = new_point
       state["current-mark"] = 1
-      if b then
+      if state["marked-points"][2] then
         state["marked-points"][2] = nil
       else
       end
@@ -198,10 +215,10 @@ local function edit_point()
     do end (state["marked-points"])[state["current-mark"]] = new_point
     local _let_16_ = state["marked-points"]
     local a = _let_16_[1]
-    local b0 = _let_16_[2]
-    if (b0 and (a.timestamp > b0.timestamp)) then
-      state["marked-points"] = {b0, a}
-      if (new_point.timestamp == b0.timestamp) then
+    local b = _let_16_[2]
+    if (b and (a.timestamp > b.timestamp)) then
+      state["marked-points"] = {b, a}
+      if (new_point.timestamp == b.timestamp) then
         state["current-mark"] = 1
       else
         state["current-mark"] = 2
@@ -300,7 +317,7 @@ local function go_to_point(index)
     return mp.commandv("show-text", "Point not marked")
   end
 end
-local function render_column(column, keys_order)
+local function render_column(column, keys_order, _3ftags)
   local right_margin = 10
   local main_font_size = 18
   local key_font_size = (1.2 * main_font_size)
@@ -321,13 +338,13 @@ local function render_column(column, keys_order)
     else
     end
   end
-  table.insert(rendered_lines, string.format("%s %s%s%s", fs(main_font_size, b(column.header)), fs(key_font_size, b(string.rep(" ", max_key_length))), fs(main_font_size, ""), string.rep(" ", (right_margin + (max_desc_length - #column.header)))))
+  table.insert(rendered_lines, string.format("%s%s %s%s%s", _3ftags, ass_fs(main_font_size, ass_b(column.header)), ass_fs(key_font_size, ass_b(string.rep(" ", max_key_length))), ass_fs(main_font_size, ""), string.rep(" ", (right_margin + (max_desc_length - #column.header)))))
   local aligned_key = nil
   for _, key in ipairs(keys_order) do
     local aligned_key0 = (string.rep("\\h", (max_key_length - #key)) .. key)
     local function _31_()
       local desc = column.keys[key]
-      return string.format("%s%s%s", fs(key_font_size, b(aligned_key0)), fs(main_font_size, (" " .. desc)), string.rep(" ", (right_margin + (max_desc_length - #desc))))
+      return string.format("%s%s%s%s", _3ftags, ass_fs(key_font_size, ass_b(aligned_key0)), ass_fs(main_font_size, (" " .. desc)), string.rep(" ", (right_margin + (max_desc_length - #desc))))
     end
     table.insert(rendered_lines, _31_())
   end
@@ -370,13 +387,13 @@ local function stack_columns(...)
   return lines
 end
 local function display_main_overlay()
-  local ass_tags = "{\\an4\\fnmonospace\\bord2.2}"
+  local ass_tags = ass("\\an4\\fnmonospace\\bord2", ass_c_2a(theme["main-menu-color"]))
   local rewind_column = {header = "Rewind and seek", keys = {r = "rewind", ["</>"] = "seek backward/forward", O = "change seek offset"}}
   local mark_mode_column = {header = "Mark mode", keys = {m = "mark new point", e = "edit point", ["a/b"] = "go to point A/B"}}
   local other_column = {header = "Other", keys = {s = "take a screenshot", C = "toggle clock", T = "change timezone", q = "quit"}}
-  local rewind_column_lines = render_column(rewind_column, {"r", "</>", "O"})
-  local mark_mode_column_lines = render_column(mark_mode_column, {"m", "e", "a/b"})
-  local other_column_lines = render_column(other_column, {"s", "C", "T", "q"})
+  local rewind_column_lines = render_column(rewind_column, {"r", "</>", "O"}, ass_c(theme["main-menu-color"]))
+  local mark_mode_column_lines = render_column(mark_mode_column, {"m", "e", "a/b"}, ass_c(theme["mark-mode-color"]))
+  local other_column_lines = render_column(other_column, {"s", "C", "T", "q"}, ass_c(theme["main-menu-color"]))
   do
     local stacked_columns = stack_columns(rewind_column_lines, mark_mode_column_lines, other_column_lines)
     local _37_
