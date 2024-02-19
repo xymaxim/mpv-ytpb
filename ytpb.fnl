@@ -173,7 +173,7 @@
       (where (or [nil] [a b])) (do
                                  (tset state.marked-points 1 new-point)
                                  (set state.current-mark 1)
-                                 (if b
+                                 (if (. state.marked-points 2)
                                      (tset state.marked-points 2 nil)))
       [a nil] (do
                 (if (>= new-point.timestamp a.timestamp)
