@@ -2,7 +2,7 @@ local mp = require("mp")
 local msg = require("mp.msg")
 local options = require("mp.options")
 local input = require("mp.input")
-local theme = {["main-menu-color"] = "FFFFFF", ["main-menu-font-size"] = 18, ["mark-mode-color"] = "FFFFFF", ["mark-mode-font-size"] = 28, ["clock-color"] = "FFFFFF", ["clock-font-size"] = 32}
+local theme = {["main-menu-color"] = "ffffff", ["main-menu-font-size"] = 18, ["mark-mode-color"] = "ffc66e", ["mark-mode-font-size"] = 28, ["clock-color"] = "ffffff", ["clock-font-size"] = 32}
 local state = {["current-mpd-path"] = nil, ["current-start-time"] = nil, ["main-overlay"] = nil, ["mark-overlay"] = nil, ["marked-points"] = {}, ["current-mark"] = nil, ["clock-overlay"] = nil, ["clock-timer"] = nil, ["activated?"] = false, ["mark-mode-enabled?"] = false}
 local settings = {["seek-offset"] = 3600, ["utc-offset"] = nil}
 if (nil == settings["utc-offset"]) then
@@ -177,9 +177,11 @@ local function display_mark_overlay()
   state["mark-overlay"].data = render_mark_overlay()
   return (state["mark-overlay"]):update()
 end
+local display_main_overlay = nil
 local function mark_point()
   if not state["mark-mode-enabled?"] then
     enable_mark_mode()
+    display_main_overlay()
   else
   end
   do
@@ -318,7 +320,7 @@ local function go_to_point(index)
     return mp.commandv("show-text", "Point not marked")
   end
 end
-local function render_column(column, keys_order, _3ftags)
+local function render_column(column, keys_order)
   local right_margin = 10
   local key_font_size = (1.2 * theme["main-menu-font-size"])
   local rendered_lines = {}
@@ -338,23 +340,40 @@ local function render_column(column, keys_order, _3ftags)
     else
     end
   end
-  table.insert(rendered_lines, string.format("%s%s %s%s%s", _3ftags, ass_fs(theme["main-menu-font-size"], ass_b(column.header)), ass_fs(key_font_size, ass_b(string.rep(" ", max_key_length))), ass_fs(theme["main-menu-font-size"], ""), string.rep(" ", (right_margin + (max_desc_length - #column.header)))))
+  table.insert(rendered_lines, string.format("%s %s%s%s", ass_fs(theme["main-menu-font-size"], ass_b(column.header)), ass_fs(key_font_size, ass_b(string.rep(" ", max_key_length))), ass_fs(theme["main-menu-font-size"], ""), string.rep(" ", (right_margin + (max_desc_length - #column.header)))))
   local aligned_key = nil
   for _, key in ipairs(keys_order) do
     local aligned_key0 = (string.rep("\\h", (max_key_length - #key)) .. key)
     local function _31_()
       local desc = column.keys[key]
-      return string.format("%s%s%s%s", _3ftags, ass_fs(key_font_size, ass_b(aligned_key0)), ass_fs(theme["main-menu-font-size"], (" " .. desc)), string.rep(" ", (right_margin + (max_desc_length - #desc))))
+      return string.format("%s%s%s", ass_fs(key_font_size, ass_b(aligned_key0)), ass_fs(theme["main-menu-font-size"], (" " .. desc)), string.rep(" ", (right_margin + (max_desc_length - #desc))))
     end
     table.insert(rendered_lines, _31_())
   end
   return rendered_lines
 end
+local function post_render_mark_column(column_lines)
+  if state["mark-mode-enabled?"] then
+    local tbl_18_auto = {}
+    local i_19_auto = 0
+    for _, line in ipairs(column_lines) do
+      local val_20_auto = string.format("%s%s%s", ass_c(theme["mark-mode-color"]), line, ass_c(theme["main-menu-color"]))
+      if (nil ~= val_20_auto) then
+        i_19_auto = (i_19_auto + 1)
+        do end (tbl_18_auto)[i_19_auto] = val_20_auto
+      else
+      end
+    end
+    return tbl_18_auto
+  else
+    return column_lines
+  end
+end
 local function stack_columns(...)
   local lines = {}
   do
     local max_column_size
-    local function _32_(...)
+    local function _34_(...)
       local tbl_18_auto = {}
       local i_19_auto = 0
       for _, column in ipairs({...}) do
@@ -367,36 +386,36 @@ local function stack_columns(...)
       end
       return tbl_18_auto
     end
-    max_column_size = math.max(table.unpack(_32_(...)))
+    max_column_size = math.max(table.unpack(_34_(...)))
     for i = 1, max_column_size do
       local line = ""
       for _, column in pairs({...}) do
-        local function _34_(...)
-          local t_35_ = column
-          if (nil ~= t_35_) then
-            t_35_ = t_35_[i]
+        local function _36_(...)
+          local t_37_ = column
+          if (nil ~= t_37_) then
+            t_37_ = t_37_[i]
           else
           end
-          return t_35_
+          return t_37_
         end
-        line = (line .. (_34_() or string.format("{\\alpha&HFF&}%s{\\alpha&H00&}", column[1])))
+        line = (line .. (_36_() or string.format("{\\alpha&HFF&}%s{\\alpha&H00&}", column[1])))
       end
       table.insert(lines, line)
     end
   end
   return lines
 end
-local function display_main_overlay()
+local function _39_()
   local ass_tags = ass("\\an4\\fnmonospace\\bord2", ass_c_2a(theme["main-menu-color"]))
   local rewind_column = {header = "Rewind and seek", keys = {r = "rewind", ["</>"] = "seek backward/forward", O = "change seek offset"}}
   local mark_mode_column = {header = "Mark mode", keys = {m = "mark new point", e = "edit point", ["a/b"] = "go to point A/B"}}
   local other_column = {header = "Other", keys = {s = "take a screenshot", C = "toggle clock", T = "change timezone", q = "quit"}}
-  local rewind_column_lines = render_column(rewind_column, {"r", "</>", "O"}, ass_c(theme["main-menu-color"]))
-  local mark_mode_column_lines = render_column(mark_mode_column, {"m", "e", "a/b"}, ass_c(theme["mark-mode-color"]))
-  local other_column_lines = render_column(other_column, {"s", "C", "T", "q"}, ass_c(theme["main-menu-color"]))
+  local rewind_column_lines = render_column(rewind_column, {"r", "</>", "O"})
+  local mark_mode_column_lines = post_render_mark_column(render_column(mark_mode_column, {"m", "e", "a/b"}))
+  local other_column_lines = render_column(other_column, {"s", "C", "T", "q"})
   do
     local stacked_columns = stack_columns(rewind_column_lines, mark_mode_column_lines, other_column_lines)
-    local _37_
+    local _40_
     do
       local tbl_18_auto = {}
       local i_19_auto = 0
@@ -408,16 +427,17 @@ local function display_main_overlay()
         else
         end
       end
-      _37_ = tbl_18_auto
+      _40_ = tbl_18_auto
     end
-    state["main-overlay"].data = table.concat(_37_, "\\N")
+    state["main-overlay"].data = table.concat(_40_, "\\N")
   end
   return (state["main-overlay"]):update()
 end
+display_main_overlay = _39_
 local function rewind_key_handler()
   mp.set_property_native("pause", true)
   local now = os.date("!%Y%m%dT%H%z")
-  local function _39_(value)
+  local function _42_(value)
     local function callback(mpd_path, time_pos)
       mp.unregister_script_message("yp:rewind-completed")
       return register_seek_after_restart(time_pos)
@@ -425,7 +445,7 @@ local function rewind_key_handler()
     request_rewind(value, callback)
     return input.terminate()
   end
-  return input.get({prompt = "Rewind date:", default_text = now, cursor_position = 12, submit = _39_})
+  return input.get({prompt = "Rewind date:", default_text = now, cursor_position = 12, submit = _42_})
 end
 local function seek_backward_key_handler()
   mp.osd_message("Seeking backward...", 999)
@@ -477,7 +497,7 @@ local function toggle_clock_key_handler()
   end
 end
 local function change_timezone_key_handler()
-  local function _43_(value)
+  local function _46_(value)
     settings["utc-offset"] = (3600 * (tonumber(value) or 0))
     draw_clock()
     if state["mark-mode-enabled?"] then
@@ -486,7 +506,7 @@ local function change_timezone_key_handler()
     end
     return input.terminate()
   end
-  return input.get({prompt = "New timezone offset: UTC", default_text = "+00", cursor_position = 4, submit = _43_})
+  return input.get({prompt = "New timezone offset: UTC", default_text = "+00", cursor_position = 4, submit = _46_})
 end
 local function deactivate()
   state["activated?"] = false
@@ -495,10 +515,10 @@ local function deactivate()
   else
   end
   do end (state["main-overlay"]):remove()
-  for _, _46_ in pairs(key_binds) do
-    local _each_47_ = _46_
-    local name = _each_47_[1]
-    local _0 = _each_47_[2]
+  for _, _49_ in pairs(key_binds) do
+    local _each_50_ = _49_
+    local name = _each_50_[1]
+    local _0 = _each_50_[2]
     mp.remove_key_binding(name)
   end
   return nil
@@ -510,30 +530,30 @@ local function activate()
   key_binds[">"] = {"seek-forward", seek_forward_key_handler}
   key_binds["O"] = {"change-seek-offset", change_seek_offset_key_handler}
   key_binds["m"] = {"mark-point", mark_point}
-  local function _48_()
+  local function _51_()
     if state["mark-mode-enabled?"] then
       return edit_point()
     else
       return mp.commandv("show-text", "No marked points")
     end
   end
-  key_binds["e"] = {"edit-point", _48_}
-  local function _50_()
+  key_binds["e"] = {"edit-point", _51_}
+  local function _53_()
     return go_to_point(1)
   end
-  key_binds["a"] = {"go-to-point-A", _50_}
-  local function _51_()
+  key_binds["a"] = {"go-to-point-A", _53_}
+  local function _54_()
     return go_to_point(2)
   end
-  key_binds["b"] = {"go-to-point-B", _51_}
+  key_binds["b"] = {"go-to-point-B", _54_}
   key_binds["s"] = {"take-screenshot", take_screenshot_key_handler}
   key_binds["C"] = {"toggle-clock", toggle_clock_key_handler}
   key_binds["T"] = {"change-timezone", change_timezone_key_handler}
   key_binds["q"] = {"quit", deactivate}
-  for key, _52_ in pairs(key_binds) do
-    local _each_53_ = _52_
-    local name = _each_53_[1]
-    local func = _each_53_[2]
+  for key, _55_ in pairs(key_binds) do
+    local _each_56_ = _55_
+    local name = _each_56_[1]
+    local func = _each_56_[2]
     mp.add_forced_key_binding(key, name, func)
   end
   state["main-overlay"] = mp.create_osd_overlay("ass-events")
@@ -544,14 +564,14 @@ local function activate()
     return nil
   end
 end
-local function _55_()
+local function _58_()
   if not state["activated?"] then
     return activate()
   else
     return deactivate()
   end
 end
-mp.add_forced_key_binding("Ctrl+p", "activate", _55_)
+mp.add_forced_key_binding("Ctrl+p", "activate", _58_)
 local function on_file_loaded()
   update_current_mpd()
   if (nil == state["clock-timer"]) then

@@ -3,11 +3,11 @@
 (local options (require :mp.options))
 (local input (require :mp.input))
 
-(local theme {:main-menu-color :FFFFFF
+(local theme {:main-menu-color :ffffff
               :main-menu-font-size 18
-              :mark-mode-color :FFFFFF
+              :mark-mode-color :ffc66e
               :mark-mode-font-size 28
-              :clock-color :FFFFFF
+              :clock-color :ffffff
               :clock-font-size 32})
 
 (local state {:current-mpd-path nil
@@ -170,9 +170,13 @@
   (set state.mark-overlay.data (render-mark-overlay))
   (state.mark-overlay:update))
 
+(var display-main-overlay nil)
+
 (fn mark-point []
   (if (not state.mark-mode-enabled?)
-      (enable-mark-mode))
+      (do
+        (enable-mark-mode)
+        (display-main-overlay)))
   (let [time-pos (mp.get_property_native :time-pos)
         new-point (Point:new time-pos state.current-start-time
                              state.current-mpd-path)]
@@ -275,7 +279,7 @@
 
 ;;; Main
 
-(fn render-column [column keys-order ?tags]
+(fn render-column [column keys-order]
   (local right-margin 10)
   (local key-font-size (* 1.2 theme.main-menu-font-size))
   (var rendered-lines [])
@@ -289,7 +293,7 @@
       (if (> desc-length max-desc-length)
           (set max-desc-length desc-length))))
   (table.insert rendered-lines
-                (string.format "%s%s %s%s%s" ?tags
+                (string.format "%s %s%s%s"
                                (ass-fs theme.main-menu-font-size
                                        (ass-b column.header))
                                (ass-fs key-font-size
@@ -305,7 +309,7 @@
                           key)]
       (table.insert rendered-lines
                     (let [desc (. column.keys key)]
-                      (string.format "%s%s%s%s" ?tags
+                      (string.format "%s%s%s"
                                      (ass-fs key-font-size (ass-b aligned-key))
                                      (ass-fs theme.main-menu-font-size
                                              (.. " " desc))
@@ -314,6 +318,13 @@
                                                     (- max-desc-length
                                                        (length desc)))))))))
   rendered-lines)
+
+(fn post-render-mark-column [column-lines]
+  (if state.mark-mode-enabled?
+      (icollect [_ line (ipairs column-lines)]
+        (string.format "%s%s%s" (ass-c theme.mark-mode-color) line
+                       (ass-c theme.main-menu-color)))
+      column-lines))
 
 (fn stack-columns [...]
   (var lines [])
@@ -329,36 +340,38 @@
       (table.insert lines line)))
   lines)
 
-(fn display-main-overlay []
-  (local ass-tags (ass "\\an4\\fnmonospace\\bord2"
-                       (ass-c* theme.main-menu-color)))
-  (local rewind-column {:header "Rewind and seek"
-                        :keys {:r :rewind
-                               :</> "seek backward/forward"
-                               :O "change seek offset"}})
-  (local mark-mode-column
-         {:header "Mark mode"
-          :keys {:m "mark new point" :e "edit point" :a/b "go to point A/B"}})
-  (local other-column {:header :Other
-                       :keys {:s "take a screenshot"
-                              :C "toggle clock"
-                              :T "change timezone"
-                              :q :quit}})
-  (local rewind-column-lines
-         (render-column rewind-column [:r "</>" :O]
-                        (ass-c theme.main-menu-color)))
-  (local mark-mode-column-lines
-         (render-column mark-mode-column [:m :e :a/b]
-                        (ass-c theme.mark-mode-color)))
-  (local other-column-lines
-         (render-column other-column [:s :C :T :q]
-                        (ass-c theme.main-menu-color)))
-  (let [stacked-columns (stack-columns rewind-column-lines
-                                       mark-mode-column-lines other-column-lines)]
-    (set state.main-overlay.data
-         (table.concat (icollect [_ line (ipairs stacked_columns)]
-                         (.. ass-tags line)) "\\N")))
-  (state.main-overlay:update))
+(set display-main-overlay
+     (fn []
+       (local ass-tags
+              (ass "\\an4\\fnmonospace\\bord2" (ass-c* theme.main-menu-color)))
+       (local rewind-column
+              {:header "Rewind and seek"
+               :keys {:r :rewind
+                      :</> "seek backward/forward"
+                      :O "change seek offset"}})
+       (local mark-mode-column
+              {:header "Mark mode"
+               :keys {:m "mark new point"
+                      :e "edit point"
+                      :a/b "go to point A/B"}})
+       (local other-column {:header :Other
+                            :keys {:s "take a screenshot"
+                                   :C "toggle clock"
+                                   :T "change timezone"
+                                   :q :quit}})
+       (local rewind-column-lines (render-column rewind-column [:r "</>" :O]))
+       (local mark-mode-column-lines
+              (-> (render-column mark-mode-column [:m :e :a/b])
+                  post-render-mark-column))
+       (local other-column-lines (render-column other-column [:s :C :T :q]))
+       (let [stacked-columns (stack-columns rewind-column-lines
+                                            mark-mode-column-lines
+                                            other-column-lines)]
+         (set state.main-overlay.data
+              (table.concat (icollect [_ line (ipairs stacked_columns)]
+                              (.. ass-tags line))
+                            "\\N")))
+       (state.main-overlay:update)))
 
 ;;; Setup
 
