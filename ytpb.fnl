@@ -103,12 +103,12 @@
 ;;; Clock
 
 (fn format-clock-time-string [timestamp]
-  (let [date-time-part (os.date "!%Y-%m-%d %H:%M:%S"
+  (let [date-time-part (os.date "!%Y–%m–%d %H:%M:%S"
                                 (+ timestamp settings.utc-offset))
         hours (math.floor (/ settings.utc-offset 3600))
         minutes (math.floor (/ (% settings.utc-offset 3600) 60))
         hh-part (string.format "%+03d" hours)]
-    (.. (string.format "%s%s" date-time-part hh-part)
+    (.. (string.format "%s %s" date-time-part hh-part)
         (if (> 0 minutes)
             (string.format ":%02d" minutes) ""))))
 
