@@ -178,7 +178,7 @@ local function display_mark_overlay()
   state["mark-overlay"].data = render_mark_overlay()
   return (state["mark-overlay"]):update()
 end
-local function mark_point()
+local function mark_new_point()
   if not state["mark-mode-enabled?"] then
     enable_mark_mode()
     display_main_overlay()
@@ -210,27 +210,31 @@ local function mark_point()
   end
   return display_mark_overlay()
 end
-local function edit_point()
-  do
-    local time_pos = mp.get_property_native("time-pos")
-    local new_point = Point:new(time_pos, state["current-start-time"], state["current-mpd-path"])
-    local time_string = new_point:format(settings["utc-offset"])
-    do end (state["marked-points"])[state["current-mark"]] = new_point
-    local _let_16_ = state["marked-points"]
-    local a = _let_16_[1]
-    local b = _let_16_[2]
-    if (b and (a.timestamp > b.timestamp)) then
-      state["marked-points"] = {b, a}
-      if (new_point.timestamp == b.timestamp) then
-        state["current-mark"] = 1
+local function edit_current_point()
+  if (nil == state["current-mark"]) then
+    return mp.commandv("show-text", "No marked points")
+  else
+    do
+      local time_pos = mp.get_property_native("time-pos")
+      local new_point = Point:new(time_pos, state["current-start-time"], state["current-mpd-path"])
+      local time_string = new_point:format(settings["utc-offset"])
+      do end (state["marked-points"])[state["current-mark"]] = new_point
+      local _let_16_ = state["marked-points"]
+      local a = _let_16_[1]
+      local b = _let_16_[2]
+      if (b and (a.timestamp > b.timestamp)) then
+        state["marked-points"] = {b, a}
+        if (new_point.timestamp == b.timestamp) then
+          state["current-mark"] = 1
+        else
+          state["current-mark"] = 2
+        end
+        mp.commandv("show-text", "Points swapped")
       else
-        state["current-mark"] = 2
       end
-      mp.commandv("show-text", "Points swapped")
-    else
     end
+    return display_mark_overlay()
   end
-  return display_mark_overlay()
 end
 local function register_seek_after_restart(time_pos)
   local function seek_after_restart()
@@ -284,12 +288,12 @@ end
 local function go_to_point(index)
   local point
   do
-    local t_23_ = state["marked-points"]
-    if (nil ~= t_23_) then
-      t_23_ = t_23_[index]
+    local t_24_ = state["marked-points"]
+    if (nil ~= t_24_) then
+      t_24_ = t_24_[index]
     else
     end
-    point = t_23_
+    point = t_24_
   end
   if point then
     state["current-mark"] = index
@@ -330,16 +334,16 @@ local function render_column(column)
     do
       local key_dividers_num = (#key.binds - 1)
       local total_label_length
-      local function _29_()
+      local function _30_()
         local total = 0
-        for _0, _30_ in ipairs(key.binds) do
-          local _each_31_ = _30_
-          local key_label = _each_31_[1]
+        for _0, _31_ in ipairs(key.binds) do
+          local _each_32_ = _31_
+          local key_label = _each_32_[1]
           total = (total + #key_label)
         end
         return total
       end
-      total_label_length = (key_dividers_num + _29_())
+      total_label_length = (key_dividers_num + _30_())
       if (max_label_length < total_label_length) then
         max_label_length = total_label_length
       else
@@ -357,13 +361,13 @@ local function render_column(column)
   table.insert(rendered_lines, string.format("%s %s%s%s", ass_fs(theme["main-menu-font-size"], ass_b(column.header)), ass_fs(key_font_size, ass_b(string.rep(" ", max_label_length))), ass_fs(theme["main-menu-font-size"], ""), fill_rest_with(" ", column.header, (max_desc_length + right_margin))))
   for _, key in ipairs(column.keys) do
     local label
-    local _34_
+    local _35_
     do
       local tbl_18_auto = {}
       local i_19_auto = 0
-      for _0, _35_ in ipairs(key.binds) do
-        local _each_36_ = _35_
-        local key_label = _each_36_[1]
+      for _0, _36_ in ipairs(key.binds) do
+        local _each_37_ = _36_
+        local key_label = _each_37_[1]
         local val_20_auto = key_label
         if (nil ~= val_20_auto) then
           i_19_auto = (i_19_auto + 1)
@@ -371,9 +375,9 @@ local function render_column(column)
         else
         end
       end
-      _34_ = tbl_18_auto
+      _35_ = tbl_18_auto
     end
-    label = table.concat(_34_, "/")
+    label = table.concat(_35_, "/")
     local aligned_label = (fill_rest_with("\\h", label, max_label_length) .. label)
     table.insert(rendered_lines, string.format("%s%s%s", ass_fs(key_font_size, ass_b(aligned_label)), ass_fs(theme["main-menu-font-size"], (" " .. key.desc)), fill_rest_with(" ", key.desc, (max_desc_length + right_margin))))
   end
@@ -400,7 +404,7 @@ local function stack_columns(...)
   local lines = {}
   do
     local max_column_size
-    local function _40_(...)
+    local function _41_(...)
       local tbl_18_auto = {}
       local i_19_auto = 0
       for _, column in ipairs({...}) do
@@ -413,7 +417,7 @@ local function stack_columns(...)
       end
       return tbl_18_auto
     end
-    max_column_size = math.max(table.unpack(_40_(...)))
+    max_column_size = math.max(table.unpack(_41_(...)))
     for i = 1, max_column_size do
       local line = ""
       for _, column in pairs({...}) do
@@ -424,16 +428,16 @@ local function stack_columns(...)
   end
   return lines
 end
-local function _42_()
+local function _43_()
   local ass_tags = ass("\\an4\\fnmonospace\\bord2", ass_c_2a(theme["main-menu-color"]))
   do
-    local _let_43_ = main_menu_map
-    local rewind_col = _let_43_[1]
-    local mark_mode_col = _let_43_[2]
-    local other_col = _let_43_[3]
+    local _let_44_ = main_menu_map
+    local rewind_col = _let_44_[1]
+    local mark_mode_col = _let_44_[2]
+    local other_col = _let_44_[3]
     local rendered_columns = {render_column(rewind_col), post_render_mark_column(render_column(mark_mode_col)), render_column(other_col)}
     local stacked_columns = stack_columns(table.unpack(rendered_columns))
-    local _44_
+    local _45_
     do
       local tbl_18_auto = {}
       local i_19_auto = 0
@@ -445,17 +449,17 @@ local function _42_()
         else
         end
       end
-      _44_ = tbl_18_auto
+      _45_ = tbl_18_auto
     end
-    state["main-overlay"].data = table.concat(_44_, "\\N")
+    state["main-overlay"].data = table.concat(_45_, "\\N")
   end
   return (state["main-overlay"]):update()
 end
-display_main_overlay = _42_
+display_main_overlay = _43_
 local function rewind_key_handler()
   mp.set_property_native("pause", true)
   local now = os.date("!%Y%m%dT%H%z")
-  local function _46_(value)
+  local function _47_(value)
     local function callback(mpd_path, time_pos)
       mp.unregister_script_message("yp:rewind-completed")
       return register_seek_after_restart(time_pos)
@@ -463,7 +467,7 @@ local function rewind_key_handler()
     request_rewind(value, callback)
     return input.terminate()
   end
-  return input.get({prompt = "Rewind date:", default_text = now, cursor_position = 12, submit = _46_})
+  return input.get({prompt = "Rewind date:", default_text = now, cursor_position = 12, submit = _47_})
 end
 local function seek_backward_key_handler()
   mp.osd_message("Seeking backward...", 999)
@@ -515,7 +519,7 @@ local function toggle_clock_key_handler()
   end
 end
 local function change_timezone_key_handler()
-  local function _50_(value)
+  local function _51_(value)
     settings["utc-offset"] = (3600 * (tonumber(value) or 0))
     draw_clock()
     if state["mark-mode-enabled?"] then
@@ -524,7 +528,7 @@ local function change_timezone_key_handler()
     end
     return input.terminate()
   end
-  return input.get({prompt = "New timezone offset: UTC", default_text = "+00", cursor_position = 4, submit = _50_})
+  return input.get({prompt = "New timezone offset: UTC", default_text = "+00", cursor_position = 4, submit = _51_})
 end
 local key_binding_names = {}
 local function deactivate()
@@ -543,11 +547,11 @@ local function register_keys(menu_map)
   local added_key_bindings = {}
   for _, column in ipairs(main_menu_map) do
     for _0, item in ipairs(column.keys) do
-      for _1, _53_ in ipairs(item.binds) do
-        local _each_54_ = _53_
-        local key = _each_54_[1]
-        local name = _each_54_[2]
-        local func = _each_54_[3]
+      for _1, _54_ in ipairs(item.binds) do
+        local _each_55_ = _54_
+        local key = _each_55_[1]
+        local name = _each_55_[2]
+        local func = _each_55_[3]
         mp.add_forced_key_binding(key, name, func)
         table.insert(added_key_bindings, name)
       end
@@ -560,13 +564,13 @@ local function define_main_menu_map()
     local bindings = {...}
     return {desc = description, binds = bindings}
   end
-  local function _55_()
+  local function _56_()
     return go_to_point(1)
   end
-  local function _56_()
+  local function _57_()
     return go_to_point(2)
   end
-  return {{header = "Rewind and seek", keys = {define_key_line("rewind", {"r", "rewind", rewind_key_handler}), define_key_line("seek backward/forward", {"<", "seek-backward", seek_backward_key_handler}, {">", "seek-forward", seek_forward_key_handler}), define_key_line("change seek offset", {"F", "change-seek-offset", change_seek_offset_key_handler})}}, {header = "Mark mode", keys = {define_key_line("mark new point", {"m", "mark-point", mark_point}), define_key_line("edit point", {"e", "edit-point", edit_point}), define_key_line("go to point A/B", {"a", "go-to-point-A", _55_}, {"b", "go-to-point-B", _56_})}}, {header = "Other", keys = {define_key_line("take a screenshot", {"s", "take-screenshot", take_screenshot_key_handler}), define_key_line("toggle clock", {"C", "toggle-clock", toggle_clock_key_handler}), define_key_line("change timezone", {"T", "change-timezone", change_timezone_key_handler}), define_key_line("quit", {"q", "quit", deactivate})}}}
+  return {{header = "Rewind and seek", keys = {define_key_line("rewind", {"r", "rewind", rewind_key_handler}), define_key_line("seek backward/forward", {"<", "seek-backward", seek_backward_key_handler}, {">", "seek-forward", seek_forward_key_handler}), define_key_line("change seek offset", {"F", "change-seek-offset", change_seek_offset_key_handler})}}, {header = "Mark mode", keys = {define_key_line("mark new point", {"m", "mark-point", mark_new_point}), define_key_line("edit point", {"e", "edit-point", edit_current_point}), define_key_line("go to point A/B", {"a", "go-to-point-A", _56_}, {"b", "go-to-point-B", _57_})}}, {header = "Other", keys = {define_key_line("take a screenshot", {"s", "take-screenshot", take_screenshot_key_handler}), define_key_line("toggle clock", {"C", "toggle-clock", toggle_clock_key_handler}), define_key_line("change timezone", {"T", "change-timezone", change_timezone_key_handler}), define_key_line("quit", {"q", "quit", deactivate})}}}
 end
 local function activate()
   state["activated?"] = true
@@ -580,14 +584,14 @@ local function activate()
     return nil
   end
 end
-local function _58_()
+local function _59_()
   if not state["activated?"] then
     return activate()
   else
     return deactivate()
   end
 end
-mp.add_forced_key_binding("Ctrl+p", "activate", _58_)
+mp.add_forced_key_binding("Ctrl+p", "activate", _59_)
 local function on_file_loaded()
   update_current_mpd()
   if (nil == state["clock-timer"]) then

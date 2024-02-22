@@ -171,7 +171,7 @@
   (set state.mark-overlay.data (render-mark-overlay))
   (state.mark-overlay:update))
 
-(fn mark-point []
+(fn mark-new-point []
   (if (not state.mark-mode-enabled?)
       (do
         (enable-mark-mode)
@@ -196,20 +196,23 @@
                       (mp.commandv :show-text "Points swapped"))))))
   (display-mark-overlay))
 
-(fn edit-point []
-  (let [time-pos (mp.get_property_native :time-pos)
-        new-point (Point:new time-pos state.current-start-time
-                             state.current-mpd-path)
-        time-string (new-point:format settings.utc-offset)]
-    (tset state.marked-points state.current-mark new-point)
-    (let [[a b] state.marked-points]
-      (if (and b (> a.timestamp b.timestamp))
-          (do
-            (set state.marked-points [b a])
-            (set state.current-mark (if (= new-point.timestamp b.timestamp) 1
-                                        2))
-            (mp.commandv :show-text "Points swapped")))))
-  (display-mark-overlay))
+(fn edit-current-point []
+  (if (= nil state.current-mark)
+      (mp.commandv :show-text "No marked points")
+      (do
+        (let [time-pos (mp.get_property_native :time-pos)
+              new-point (Point:new time-pos state.current-start-time
+                                   state.current-mpd-path)
+              time-string (new-point:format settings.utc-offset)]
+          (tset state.marked-points state.current-mark new-point)
+          (let [[a b] state.marked-points]
+            (if (and b (> a.timestamp b.timestamp))
+                (do
+                  (set state.marked-points [b a])
+                  (set state.current-mark
+                       (if (= new-point.timestamp b.timestamp) 1 2))
+                  (mp.commandv :show-text "Points swapped")))))
+        (display-mark-overlay))))
 
 (fn register-seek-after-restart [time-pos]
   (fn seek-after-restart []
@@ -472,9 +475,9 @@ marked points, while the mark mode overlay will be hidden."
              [:F :change-seek-offset change-seek-offset-key-handler])]}
    {:header "Mark mode"
     :keys [(define-key-line "mark new point"
-             [:m :mark-point mark-point])
+             [:m :mark-point mark-new-point])
            (define-key-line "edit point"
-             [:e :edit-point edit-point])
+             [:e :edit-point edit-current-point])
            (define-key-line "go to point A/B"
              [:a :go-to-point-A #(go-to-point 1)]
              [:b :go-to-point-B #(go-to-point 2)])]}
