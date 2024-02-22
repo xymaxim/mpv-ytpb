@@ -450,7 +450,7 @@ marked points, while the mark mode overlay will be hidden."
     (mp.remove_key_binding name)))
 
 (fn register-keys [menu-map]
-  (local added-key-bindings [])  
+  (local added-key-bindings [])
   (each [_ column (ipairs main-menu-map)]
     (each [_ item (ipairs column.keys)]
       (each [_ [key name func] (ipairs item.binds)]
@@ -458,45 +458,41 @@ marked points, while the mark mode overlay will be hidden."
         (table.insert added-key-bindings name))))
   added-key-bindings)
 
+(fn define-main-menu-map []
+  (fn define-key-line [description & bindings]
+    {:desc description :binds bindings})
+
+  [{:header "Rewind and seek"
+    :keys [(define-key-line :rewind
+             [:r :rewind rewind-key-handler])
+           (define-key-line "seek backward/forward"
+             ["<" :seek-backward seek-backward-key-handler]
+             [">" :seek-forward seek-forward-key-handler])
+           (define-key-line "change seek offset"
+             [:F :change-seek-offset change-seek-offset-key-handler])]}
+   {:header "Mark mode"
+    :keys [(define-key-line "mark new point"
+             [:m :mark-point mark-point])
+           (define-key-line "edit point"
+             [:e :edit-point edit-point])
+           (define-key-line "go to point A/B"
+             [:a :go-to-point-A #(go-to-point 1)]
+             [:b :go-to-point-B #(go-to-point 2)])]}
+   {:header :Other
+    :keys [(define-key-line "take a screenshot"
+             [:s :take-screenshot take-screenshot-key-handler])
+           (define-key-line "toggle clock"
+             [:C :toggle-clock toggle-clock-key-handler])
+           (define-key-line "change timezone"
+             [:T :change-timezone change-timezone-key-handler])
+           (define-key-line :quit
+             [:q :quit deactivate])]}])
+
 (fn activate []
   "Register key bindings and show the main overlay. If it's not a first launch,
 show the previously marked points."
   (set state.activated? true)
-  
-  (fn define-key-line [description & bindings]
-    {:desc description :binds bindings})
-
-  (set main-menu-map [{:header "Rewind and seek"
-                       :keys [(define-key-line :rewind
-                                [:r :rewind rewind-key-handler])
-                              (define-key-line "seek backward/forward"
-                                ["<" :seek-backward seek-backward-key-handler]
-                                [">" :seek-forward seek-forward-key-handler])
-                              (define-key-line "change seek offset"
-                                [:F
-                                 :change-seek-offset
-                                 change-seek-offset-key-handler])]}
-                      {:header "Mark mode"
-                       :keys [(define-key-line "mark new point"
-                                [:m :mark-point mark-point])
-                              (define-key-line :edit-point
-                                [:e :edit-point edit-point])
-                              (define-key-line "go to point A/B"
-                                [:a :go-to-point-A #(go-to-point 1)]
-                                [:b :go-to-point-B #(go-to-point 2)])]}
-                      {:header :Other
-                       :keys [(define-key-line "take a screenshot"
-                                [:s
-                                 :take-screenshot
-                                 take-screenshot-key-handler])
-                              (define-key-line "toggle clock"
-                                [:C :toggle-clock toggle-clock-key-handler])
-                              (define-key-line "change timezone"
-                                [:T
-                                 :change-timezone
-                                 change-timezone-key-handler])
-                              (define-key-line :quit
-                                [:q :quit deactivate])]}])
+  (set main-menu-map (define-main-menu-map))
   (set key-binding-names (register-keys main-menu-map))
   (set state.main-overlay (mp.create_osd_overlay :ass-events))
   (display-main-overlay)

@@ -555,8 +555,7 @@ local function register_keys(menu_map)
   end
   return added_key_bindings
 end
-local function activate()
-  state["activated?"] = true
+local function define_main_menu_map()
   local function define_key_line(description, ...)
     local bindings = {...}
     return {desc = description, binds = bindings}
@@ -567,7 +566,11 @@ local function activate()
   local function _56_()
     return go_to_point(2)
   end
-  main_menu_map = {{header = "Rewind and seek", keys = {define_key_line("rewind", {"r", "rewind", rewind_key_handler}), define_key_line("seek backward/forward", {"<", "seek-backward", seek_backward_key_handler}, {">", "seek-forward", seek_forward_key_handler}), define_key_line("change seek offset", {"F", "change-seek-offset", change_seek_offset_key_handler})}}, {header = "Mark mode", keys = {define_key_line("mark new point", {"m", "mark-point", mark_point}), define_key_line("edit-point", {"e", "edit-point", edit_point}), define_key_line("go to point A/B", {"a", "go-to-point-A", _55_}, {"b", "go-to-point-B", _56_})}}, {header = "Other", keys = {define_key_line("take a screenshot", {"s", "take-screenshot", take_screenshot_key_handler}), define_key_line("toggle clock", {"C", "toggle-clock", toggle_clock_key_handler}), define_key_line("change timezone", {"T", "change-timezone", change_timezone_key_handler}), define_key_line("quit", {"q", "quit", deactivate})}}}
+  return {{header = "Rewind and seek", keys = {define_key_line("rewind", {"r", "rewind", rewind_key_handler}), define_key_line("seek backward/forward", {"<", "seek-backward", seek_backward_key_handler}, {">", "seek-forward", seek_forward_key_handler}), define_key_line("change seek offset", {"F", "change-seek-offset", change_seek_offset_key_handler})}}, {header = "Mark mode", keys = {define_key_line("mark new point", {"m", "mark-point", mark_point}), define_key_line("edit point", {"e", "edit-point", edit_point}), define_key_line("go to point A/B", {"a", "go-to-point-A", _55_}, {"b", "go-to-point-B", _56_})}}, {header = "Other", keys = {define_key_line("take a screenshot", {"s", "take-screenshot", take_screenshot_key_handler}), define_key_line("toggle clock", {"C", "toggle-clock", toggle_clock_key_handler}), define_key_line("change timezone", {"T", "change-timezone", change_timezone_key_handler}), define_key_line("quit", {"q", "quit", deactivate})}}}
+end
+local function activate()
+  state["activated?"] = true
+  main_menu_map = define_main_menu_map()
   key_binding_names = register_keys(main_menu_map)
   state["main-overlay"] = mp.create_osd_overlay("ass-events")
   display_main_overlay()
