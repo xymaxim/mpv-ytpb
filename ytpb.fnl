@@ -431,7 +431,7 @@
 (fn change-timezone-key-handler []
   (input.get {:prompt "New timezone offset: UTC"
               :default_text :+00
-              :cursor_position 4
+              :cursor_position 2
               :submit (fn [value]
                         (let [hours 3600]
                           (set settings.utc-offset

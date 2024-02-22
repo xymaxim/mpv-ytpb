@@ -531,7 +531,7 @@ local function change_timezone_key_handler()
     end
     return input.terminate()
   end
-  return input.get({prompt = "New timezone offset: UTC", default_text = "+00", cursor_position = 4, submit = _51_})
+  return input.get({prompt = "New timezone offset: UTC", default_text = "+00", cursor_position = 2, submit = _51_})
 end
 local key_binding_names = {}
 local function deactivate()
