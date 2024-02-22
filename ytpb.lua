@@ -520,7 +520,10 @@ local function toggle_clock_key_handler()
 end
 local function change_timezone_key_handler()
   local function _51_(value)
-    settings["utc-offset"] = (3600 * (tonumber(value) or 0))
+    do
+      local hours = 3600
+      settings["utc-offset"] = ((tonumber(value) or 0) * hours)
+    end
     draw_clock()
     if state["mark-mode-enabled?"] then
       display_mark_overlay()

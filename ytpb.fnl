@@ -433,8 +433,9 @@
               :default_text :+00
               :cursor_position 4
               :submit (fn [value]
-                        (set settings.utc-offset
-                             (* 3600 (or (tonumber value) 0)))
+                        (let [hours 3600]
+                          (set settings.utc-offset
+                               (* (or (tonumber value) 0) hours)))
                         (draw-clock)
                         (if state.mark-mode-enabled?
                             (display-mark-overlay))
