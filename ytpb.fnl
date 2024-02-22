@@ -26,7 +26,8 @@
     (let [local-offset (- (os.time) (os.time (os.date :!*t)))]
       (set settings.utc-offset local-offset)))
 
-(local key-binds {})
+(var main-menu-map nil)
+(var display-main-overlay nil)
 
 (local Point {})
 
@@ -170,8 +171,6 @@
   (set state.mark-overlay.data (render-mark-overlay))
   (state.mark-overlay:update))
 
-(var display-main-overlay nil)
-
 (fn mark-point []
   (if (not state.mark-mode-enabled?)
       (do
@@ -279,44 +278,47 @@
 
 ;;; Main
 
-(fn render-column [column keys-order]
+(fn render-column [column]
   (local right-margin 10)
   (local key-font-size (* 1.2 theme.main-menu-font-size))
   (var rendered-lines [])
-  (var max-key-length 0)
+  (var max-label-length 0)
   (var max-desc-length 0)
-  (each [key desc (pairs column.keys)]
-    (let [key-length (length key)]
-      (if (> key-length max-key-length)
-          (set max-key-length key-length)))
-    (let [desc-length (length desc)]
-      (if (> desc-length max-desc-length)
+  (each [_ key (ipairs column.keys)]
+    (let [key-dividers-num (- (length key.binds) 1)
+          total-label-length (+ key-dividers-num
+                                (accumulate [total 0 _ [key-label] (ipairs key.binds)]
+                                  (+ total (length key-label))))]
+      (if (< max-label-length total-label-length)
+          (set max-label-length total-label-length)))
+    (let [desc-length (length key.desc)]
+      (if (< max-desc-length desc-length)
           (set max-desc-length desc-length))))
+
+  (fn fill-rest-with [symbol text max-length]
+    (string.rep symbol (- max-length (length text))))
+
   (table.insert rendered-lines
                 (string.format "%s %s%s%s"
                                (ass-fs theme.main-menu-font-size
                                        (ass-b column.header))
                                (ass-fs key-font-size
-                                       (ass-b (string.rep " " max-key-length)))
+                                       (ass-b (string.rep " " max-label-length)))
                                (ass-fs theme.main-menu-font-size "")
-                               (string.rep " "
-                                           (+ right-margin
-                                              (- max-desc-length
-                                                 (length column.header))))))
-  (var aligned-key nil)
-  (each [_ key (ipairs keys-order)]
-    (let [aligned-key (.. (string.rep "\\h" (- max-key-length (length key)))
-                          key)]
+                               (fill-rest-with " " column.header
+                                               (+ max-desc-length right-margin))))
+  (each [_ key (ipairs column.keys)]
+    (let [label (table.concat (icollect [_ [key-label] (ipairs key.binds)]
+                                key-label) "/")
+          aligned-label (.. (fill-rest-with "\\h" label max-label-length) label)]
       (table.insert rendered-lines
-                    (let [desc (. column.keys key)]
-                      (string.format "%s%s%s"
-                                     (ass-fs key-font-size (ass-b aligned-key))
-                                     (ass-fs theme.main-menu-font-size
-                                             (.. " " desc))
-                                     (string.rep " "
-                                                 (+ right-margin
-                                                    (- max-desc-length
-                                                       (length desc)))))))))
+                    (string.format "%s%s%s"
+                                   (ass-fs key-font-size (ass-b aligned-label))
+                                   (ass-fs theme.main-menu-font-size
+                                           (.. " " key.desc))
+                                   (fill-rest-with " " key.desc
+                                                   (+ max-desc-length
+                                                      right-margin))))))
   rendered-lines)
 
 (fn post-render-mark-column [column-lines]
@@ -334,7 +336,7 @@
       (var line "")
       (each [_ column (pairs [...])]
         (set line (.. line
-                      (or (?. column i)
+                      (or (. column i)
                           (string.format "{\\alpha&HFF&}%s{\\alpha&H00&}"
                                          (. column 1))))))
       (table.insert lines line)))
@@ -344,29 +346,12 @@
      (fn []
        (local ass-tags
               (ass "\\an4\\fnmonospace\\bord2" (ass-c* theme.main-menu-color)))
-       (local rewind-column
-              {:header "Rewind and seek"
-               :keys {:r :rewind
-                      :</> "seek backward/forward"
-                      :O "change seek offset"}})
-       (local mark-mode-column
-              {:header "Mark mode"
-               :keys {:m "mark new point"
-                      :e "edit point"
-                      :a/b "go to point A/B"}})
-       (local other-column {:header :Other
-                            :keys {:s "take a screenshot"
-                                   :C "toggle clock"
-                                   :T "change timezone"
-                                   :q :quit}})
-       (local rewind-column-lines (render-column rewind-column [:r "</>" :O]))
-       (local mark-mode-column-lines
-              (-> (render-column mark-mode-column [:m :e :a/b])
-                  post-render-mark-column))
-       (local other-column-lines (render-column other-column [:s :C :T :q]))
-       (let [stacked-columns (stack-columns rewind-column-lines
-                                            mark-mode-column-lines
-                                            other-column-lines)]
+       (let [[rewind-col mark-mode-col other-col] main-menu-map
+             rendered-columns [(render-column rewind-col)
+                               (-> (render-column mark-mode-col)
+                                   (post-render-mark-column))
+                               (render-column other-col)]
+             stacked-columns (stack-columns (table.unpack rendered-columns))]
          (set state.main-overlay.data
               (table.concat (icollect [_ line (ipairs stacked_columns)]
                               (.. ass-tags line))
@@ -452,6 +437,8 @@
                             (display-mark-overlay))
                         (input.terminate))}))
 
+(var key-binding-names [])
+
 (fn deactivate []
   "Disable key bindings and hide overlays on closing the main overlay. Keep
 marked points, while the mark mode overlay will be hidden."
@@ -459,32 +446,58 @@ marked points, while the mark mode overlay will be hidden."
   (if state.mark-mode-enabled?
       (state.mark-overlay:remove))
   (state.main-overlay:remove)
-  (each [_ [name _] (pairs key-binds)]
+  (each [_ name (ipairs key-binding-names)]
     (mp.remove_key_binding name)))
+
+(fn register-keys [menu-map]
+  (local added-key-bindings [])  
+  (each [_ column (ipairs main-menu-map)]
+    (each [_ item (ipairs column.keys)]
+      (each [_ [key name func] (ipairs item.binds)]
+        (mp.add_forced_key_binding key name func)
+        (table.insert added-key-bindings name))))
+  added-key-bindings)
 
 (fn activate []
   "Register key bindings and show the main overlay. If it's not a first launch,
 show the previously marked points."
   (set state.activated? true)
-  (tset key-binds :r [:rewind rewind-key-handler])
-  (tset key-binds "<" [:seek-backward seek-backward-key-handler])
-  (tset key-binds ">" [:seek-forward seek-forward-key-handler])
-  (tset key-binds :O [:change-seek-offset change-seek-offset-key-handler])
-  (tset key-binds :m [:mark-point mark-point])
-  (tset key-binds :e
-        [:edit-point
-         (fn []
-           (if state.mark-mode-enabled?
-               (edit-point)
-               (mp.commandv :show-text "No marked points")))])
-  (tset key-binds :a [:go-to-point-A #(go-to-point 1)])
-  (tset key-binds :b [:go-to-point-B #(go-to-point 2)])
-  (tset key-binds :s [:take-screenshot take-screenshot-key-handler])
-  (tset key-binds :C [:toggle-clock toggle-clock-key-handler])
-  (tset key-binds :T [:change-timezone change-timezone-key-handler])
-  (tset key-binds :q [:quit deactivate])
-  (each [key [name func] (pairs key-binds)]
-    (mp.add_forced_key_binding key name func))
+  
+  (fn define-key-line [description & bindings]
+    {:desc description :binds bindings})
+
+  (set main-menu-map [{:header "Rewind and seek"
+                       :keys [(define-key-line :rewind
+                                [:r :rewind rewind-key-handler])
+                              (define-key-line "seek backward/forward"
+                                ["<" :seek-backward seek-backward-key-handler]
+                                [">" :seek-forward seek-forward-key-handler])
+                              (define-key-line "change seek offset"
+                                [:F
+                                 :change-seek-offset
+                                 change-seek-offset-key-handler])]}
+                      {:header "Mark mode"
+                       :keys [(define-key-line "mark new point"
+                                [:m :mark-point mark-point])
+                              (define-key-line :edit-point
+                                [:e :edit-point edit-point])
+                              (define-key-line "go to point A/B"
+                                [:a :go-to-point-A #(go-to-point 1)]
+                                [:b :go-to-point-B #(go-to-point 2)])]}
+                      {:header :Other
+                       :keys [(define-key-line "take a screenshot"
+                                [:s
+                                 :take-screenshot
+                                 take-screenshot-key-handler])
+                              (define-key-line "toggle clock"
+                                [:C :toggle-clock toggle-clock-key-handler])
+                              (define-key-line "change timezone"
+                                [:T
+                                 :change-timezone
+                                 change-timezone-key-handler])
+                              (define-key-line :quit
+                                [:q :quit deactivate])]}])
+  (set key-binding-names (register-keys main-menu-map))
   (set state.main-overlay (mp.create_osd_overlay :ass-events))
   (display-main-overlay)
   (if state.mark-mode-enabled?
