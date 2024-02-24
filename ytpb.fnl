@@ -1,7 +1,8 @@
 (local mp (require :mp))
-(local msg (require :mp.msg))
 (local options (require :mp.options))
 (local input (require :mp.input))
+
+(local picker (require :picker))
 
 (local theme {:main-menu-color :ffffff
               :main-menu-font-size 18
@@ -25,9 +26,6 @@
 (if (= nil settings.utc-offset)
     (let [local-offset (- (os.time) (os.time (os.date :!*t)))]
       (set settings.utc-offset local-offset)))
-
-(var main-menu-map nil)
-(var display-main-overlay nil)
 
 (local Point {})
 
@@ -171,6 +169,8 @@
   (set state.mark-overlay.data (render-mark-overlay))
   (state.mark-overlay:update))
 
+(var display-main-overlay nil)
+
 (fn mark-new-point []
   (if (not state.mark-mode-enabled?)
       (do
@@ -247,13 +247,13 @@
   (register-seek-after-restart point.time-pos)
   (mp.commandv :loadfile point.mpd-path :replace))
 
-(fn request-rewind [timestamp callback]
+(fn request-rewind [date callback]
   (mp.osd_message :Rewinding... 999)
   (mp.set_property_native :pause true)
   (if (state.clock-timer:is_enabled)
       (stop-clock))
   (mp.register_script_message "yp:rewind-completed" callback)
-  (mp.commandv :script-message "yp:rewind" timestamp))
+  (mp.commandv :script-message "yp:rewind" date))
 
 (fn go-to-point [index]
   (local point (?. state.marked-points index))
@@ -345,6 +345,8 @@
       (table.insert lines line)))
   lines)
 
+(var main-menu-map nil)
+
 (set display-main-overlay
      (fn []
        (local ass-tags
@@ -365,17 +367,19 @@
 
 (fn rewind-key-handler []
   (mp.set_property_native :pause true)
-  (let [now (os.date "!%Y%m%dT%H%z")]
-    (input.get {:prompt "Rewind date:"
-                :default_text now
-                :cursor_position 12
-                :submit (fn [value]
-                          (fn callback [mpd-path time-pos]
-                            (mp.unregister_script_message "yp:rewind-completed")
-                            (register-seek-after-restart time-pos))
+  (let [time-pos (mp.get_property_native :time-pos 0)
+        time-string (format-clock-time-string (+ time-pos
+                                                 state.current-start-time))]
+    (picker.get {:prompt "> Rewind to:\n"
+                 :default (string.gsub time-string "–" "-")
+                 :cursor-pos 12
+                 :submit (fn [date]
+                           (fn callback [mpd-path time-pos]
+                             (mp.unregister_script_message "yp:rewind-completed")
+                             (register-seek-after-restart time-pos))
 
-                          (request-rewind value callback)
-                          (input.terminate))})))
+                           (picker.terminate)
+                           (request-rewind date callback))})))
 
 (fn seek-backward-key-handler []
   (mp.osd_message "Seeking backward..." 999)
@@ -450,6 +454,7 @@ marked points, while the mark mode overlay will be hidden."
   (if state.mark-mode-enabled?
       (state.mark-overlay:remove))
   (state.main-overlay:remove)
+  (picker.terminate)
   (each [_ name (ipairs key-binding-names)]
     (mp.remove_key_binding name)))
 
