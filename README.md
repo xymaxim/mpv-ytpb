@@ -1,20 +1,20 @@
 # mpv-ytpb
 
-*mpv-ytpb* is an mpv user script to play and rewind YouTube live streams. The
-script detects `ytpb://<STREAM>` links passed to the mpv player, and launches
-the *[ytpb](https://github.com/xymaxim/ytpb)* instance to communicate with it
-via JSON IPC. A set of script key bindings allows to play interactively past
-moments of live streams.
+*mpv-ytpb* is an mpv user script to play and rewind YouTube live streams
+interactively. The script detects `ytpb://<STREAM>` links passed to the mpv
+player, and launches the *[ytpb](https://github.com/xymaxim/ytpb)* instance to
+communicate with it via JSON IPC. A set of script key bindings allows to play,
+mark and export past moments of live streams.
 
 ![mpv-ytpb user interface](./images/mpv-ytpb-ui.png)
 
 ## Install
 
-The *mpv-ytpb* requires *[ytpb](https://github.com/xymaxim/ytpb)* to be
+*mpv-ytpb* requires *[ytpb](https://github.com/xymaxim/ytpb)* to be
 installed in your `PATH`. Also, playing needs a custom mpv build with patched
-FFmpeg (see https://github.com/xymaxim/ytpb/issues/4).
+FFmpeg (see xymaxim/ytpb#4 for details).
 
-To install, copy `ytpb.lua` to your mpv `~~/scripts`
+To install this script, copy `ytpb.lua` to your mpv `~~/scripts`
 [directory](https://mpv.io/manual/master/#files).
 
 ## Usage 
@@ -24,7 +24,7 @@ To install, copy `ytpb.lua` to your mpv `~~/scripts`
 where `<STREAM>` is an YouTube video URL or ID.
 
 It will open a player with a stream playing and bind `Ctrl+p` key to activate
-the script menu.
+the script main menu.
 
 ### Rewinding
 
@@ -35,13 +35,19 @@ Rewinding to a moment in a stream is bound to `r` key.
 #### Nearby seeking
 
 If ``cache=yes`` is set in ``mpv.conf`` (highly recommended), seeking works
-smoothly within cached ranges as well as the mpv's A-B loop functionality.
+smoothly within cached ranges as well as the mpv's A-B loop functionality with
+the default keys.
 
 #### Seeking by rewinding
 
-Seeking backward and forward outside cached ranges is possible with `<` and `>`
-keys. It uses rewinding to reach a target moment. The offset value can be
-changed with `F` key or via options.
+Seeking backward and forward outside of cached ranges is possible with `<` and
+`>` keys. The seeking by rewinding is a quick form of rewinding, with no need to
+enter a target date. An user-defined, arbitrary offset is used instead. The
+offset value can be changed with `F` key or via options.
+
+The format of the input offset value (after `F` pressed) is
+`[<days>d][<hours>H][<minutes>M][<seconds>S]`, where each part is optional, but
+order must be preserved. For example, `1h`, or `1h30m`, or `120m`.
 
 ### Mark mode
 
@@ -52,30 +58,30 @@ selected, you can jump back to them with `a` and `b` keys.
 
 ## Key bindings
 
-By default, there is only one key available—it toggles the script menu:
+By default, there is only one key available—it toggles the script main menu:
 
-`Ctrl-p` — activate and deactivate *mpv-ytpb*
+`Ctrl-p` — activate and deactivate the main menu
 
 After activation, the following key bindings are dynamically added:
 
 ### Rewind and seek
 
-`r` — rewind to a date
-`</>` — seek back and forward to an relative offset
-`F` — change seek offset
+* `r` — rewind to a date
+* `</>` — seek back and forward to an relative offset
+* `F` — change seek offset
 
 ### Mark mode
 
-`m` — mark a new point labeled A or B
-`e` — edit current point
-`a/b` — go to point A or B
+* `m` — mark a new point labeled A or B
+* `e` — edit current point
+* `a/b` — go to point A or B
 
 ### Other
 
-`s` — take a screenshot and save to a file
-`C` — toggle clock
-`T` — change global timezone
-`q` — quit
+* `s` — take a screenshot and save to a file
+* `C` — toggle clock
+* `T` — change global timezone
+* `q` — quit
 
 ## How it works
 
@@ -118,4 +124,3 @@ communicate with *ytpb* via JSON-IPC.
 The date and time picker was inspired by the
 [seek-to.lua](https://github.com/occivink/mpv-scripts/tree/master?tab=readme-ov-file#seek-tolua)
 script script.
-
