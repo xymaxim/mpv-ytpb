@@ -1,6 +1,8 @@
 local mp = require("mp")
-local options = require("mp.options")
 local input = require("mp.input")
+local msg = require("mp.msg")
+local options = require("mp.options")
+local utils = require("mp.utils")
 local picker
 package.preload["picker"] = package.preload["picker"] or function(...)
   local mp = require("mp")
@@ -174,6 +176,8 @@ end
 picker = require("picker")
 local theme = {["main-menu-color"] = "ffffff", ["main-menu-font-size"] = 18, ["mark-mode-color"] = "ffc66e", ["mark-mode-font-size"] = 28, ["clock-color"] = "ffffff", ["clock-font-size"] = 32}
 local state = {["current-mpd-path"] = nil, ["current-start-time"] = nil, ["main-overlay"] = nil, ["mark-overlay"] = nil, ["marked-points"] = {}, ["current-mark"] = nil, ["clock-overlay"] = nil, ["clock-timer"] = nil, ["activated?"] = false, ["mark-mode-enabled?"] = false}
+local socket_path = nil
+local ytpb_mpv_handle = nil
 local settings = {["seek-offset"] = 3600, ["utc-offset"] = nil}
 if (nil == settings["utc-offset"]) then
   local local_offset = (os.time() - os.time(os.date("!*t")))
@@ -182,10 +186,10 @@ else
 end
 local Point = {}
 Point.new = function(self, time_pos, start_time, mpd_path)
-  _G.assert((nil ~= mpd_path), "Missing argument mpd-path on ytpb.fnl:32")
-  _G.assert((nil ~= start_time), "Missing argument start-time on ytpb.fnl:32")
-  _G.assert((nil ~= time_pos), "Missing argument time-pos on ytpb.fnl:32")
-  _G.assert((nil ~= self), "Missing argument self on ytpb.fnl:32")
+  _G.assert((nil ~= mpd_path), "Missing argument mpd-path on ytpb.fnl:37")
+  _G.assert((nil ~= start_time), "Missing argument start-time on ytpb.fnl:37")
+  _G.assert((nil ~= time_pos), "Missing argument time-pos on ytpb.fnl:37")
+  _G.assert((nil ~= self), "Missing argument self on ytpb.fnl:37")
   local obj = {["time-pos"] = time_pos, ["start-time"] = start_time, ["mpd-path"] = mpd_path}
   obj.timestamp = (obj["start-time"] + obj["time-pos"])
   obj["rewound?"] = false
@@ -194,7 +198,7 @@ Point.new = function(self, time_pos, start_time, mpd_path)
   return obj
 end
 Point.format = function(self, _3futc_offset)
-  _G.assert((nil ~= self), "Missing argument self on ytpb.fnl:40")
+  _G.assert((nil ~= self), "Missing argument self on ytpb.fnl:45")
   local seconds = (math.floor(self.timestamp) + (_3futc_offset or 0))
   local milliseconds = (self.timestamp % 1)
   return (os.date("!%Y-%m-%d %H:%M:%S", seconds) .. "." .. string.sub(string.format("%.3f", milliseconds), 3))
@@ -745,7 +749,7 @@ local function define_main_menu_map()
   local function _75_()
     return go_to_point(2)
   end
-  return {{header = "Rewind and seek", keys = {define_key_line("rewind", {"r", "rewind", rewind_key_handler}), define_key_line("seek backward/forward", {"<", "seek-backward", seek_backward_key_handler}, {">", "seek-forward", seek_forward_key_handler}), define_key_line("change seek offset", {"F", "change-seek-offset", change_seek_offset_key_handler})}}, {header = "Mark mode", keys = {define_key_line("mark new point", {"m", "mark-point", mark_new_point}), define_key_line("edit point", {"e", "edit-point", edit_current_point}), define_key_line("go to point A/B", {"a", "go-to-point-A", _74_}, {"b", "go-to-point-B", _75_})}}, {header = "Other", keys = {define_key_line("take a screenshot", {"s", "take-screenshot", take_screenshot_key_handler}), define_key_line("toggle clock", {"C", "toggle-clock", toggle_clock_key_handler}), define_key_line("change timezone", {"T", "change-timezone", change_timezone_key_handler}), define_key_line("quit", {"q", "quit", deactivate})}}}
+  return {{header = "Rewind and seek", keys = {define_key_line("rewind", {"r", "rewind", rewind_key_handler}), define_key_line("seek backward/forward", {"<", "seek-backward", seek_backward_key_handler}, {">", "seek-forward", seek_forward_key_handler}), define_key_line("change seek offset", {"F", "change-seek-offset", change_seek_offset_key_handler})}}, {header = "Mark mode", keys = {define_key_line("mark new point", {"m", "mark-point", mark_new_point}), define_key_line("edit point", {"e", "edit-point", edit_current_point}), define_key_line("go to point A/B", {"a", "go-to-point-A", _74_}, {"b", "go-to-point-B", _75_})}}, {header = "Other", keys = {define_key_line("take screenshot", {"s", "take-screenshot", take_screenshot_key_handler}), define_key_line("toggle clock", {"C", "toggle-clock", toggle_clock_key_handler}), define_key_line("change timezone", {"T", "change-timezone", change_timezone_key_handler}), define_key_line("quit", {"q", "quit", deactivate})}}}
 end
 local function activate()
   state["activated?"] = true
@@ -767,12 +771,36 @@ local function _77_()
   end
 end
 mp.add_forced_key_binding("Ctrl+p", "activate", _77_)
-local function on_file_loaded()
-  update_current_mpd()
-  if (nil == state["clock-timer"]) then
+local function run_hook(ytpb_url)
+  mp.set_property("stream-open-filename", "null://")
+  mp.set_property("idle", "yes")
+  mp.commandv("playlist-play-index", "none")
+  local function on_file_loaded()
+    update_current_mpd()
     return start_clock()
+  end
+  mp.register_event("file-loaded", on_file_loaded)
+  local stream_url_or_id = ytpb_url:sub(8)
+  local socket_path0 = ("/tmp/mpv-ytpb-socket-" .. utils.getpid())
+  local global_args = table.concat({"--no-config", "--debug"}, " ")
+  local args = table.concat({"--ipc-server", socket_path0, stream_url_or_id}, " ")
+  mp.set_property("input-ipc-server", socket_path0)
+  local command = {"ytpb-mpv", global_args, "listen", args, "&"}
+  state["socket-path"] = socket_path0
+  state["ytpb-mpv-handle"] = io.popen(table.concat(command, " "), "w")
+  return nil
+end
+local function on_load_file()
+  local open_filename = mp.get_property("stream-open-filename", "")
+  if (1 == open_filename:find("ytpb://")) then
+    return msg.info("ytpb URL detected, run hook", run_hook(open_filename))
   else
     return nil
   end
 end
-return mp.register_event("file-loaded", on_file_loaded)
+mp.add_hook("on_load", 50, on_load_file)
+local function _80_()
+  do end (state["ytpb-mpv-handle"]):close()
+  return os.remove(state["socket-path"])
+end
+return mp.register_event("shutdown", _80_)

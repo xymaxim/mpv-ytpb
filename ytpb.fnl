@@ -1,6 +1,8 @@
 (local mp (require :mp))
-(local options (require :mp.options))
 (local input (require :mp.input))
+(local msg (require :mp.msg))
+(local options (require :mp.options))
+(local utils (require :mp.utils))
 
 (local picker (require :picker))
 
@@ -21,6 +23,9 @@
               :current-mark nil
               :clock-overlay nil
               :clock-timer nil})
+
+(local socket-path nil)
+(local ytpb-mpv-handle nil)
 
 (local settings {:seek-offset 3600 :utc-offset nil})
 (if (= nil settings.utc-offset)
@@ -488,7 +493,7 @@ marked points, while the mark mode overlay will be hidden."
              [:a :go-to-point-A #(go-to-point 1)]
              [:b :go-to-point-B #(go-to-point 2)])]}
    {:header :Other
-    :keys [(define-key-line "take a screenshot"
+    :keys [(define-key-line "take screenshot"
              [:s :take-screenshot take-screenshot-key-handler])
            (define-key-line "toggle clock"
              [:C :toggle-clock toggle-clock-key-handler])
@@ -514,9 +519,33 @@ show the previously marked points."
                                  (activate)
                                  (deactivate))))
 
-(fn on-file-loaded []
-  (update-current-mpd)
-  (if (= nil state.clock-timer)
-      (start-clock)))
+(fn run-hook [ytpb-url]
+  (mp.set_property :stream-open-filename "null://")
+  (mp.set_property :idle :yes)
+  (mp.commandv :playlist-play-index :none)
 
-(mp.register_event :file-loaded on-file-loaded)
+  (fn on-file-loaded []
+    (update-current-mpd)
+    (start-clock))
+
+  (mp.register_event :file-loaded on-file-loaded)
+  (let [stream-url-or-id (ytpb-url:sub 8)
+        socket-path (.. :/tmp/mpv-ytpb-socket- (utils.getpid))
+        global-args (table.concat [:--no-config :--debug] " ")
+        args (table.concat [:--ipc-server socket-path stream-url-or-id] " ")]
+    (mp.set_property :input-ipc-server socket-path)
+    (let [command [:ytpb-mpv global-args :listen args "&"]]
+      (set state.socket-path socket-path)
+      (set state.ytpb-mpv-handle (io.popen (table.concat command " ") :w)))))
+
+(fn on-load-file []
+  (let [open-filename (mp.get_property :stream-open-filename "")]
+    (if (= 1 (open-filename:find "ytpb://"))
+        (msg.info "ytpb URL detected, run hook" (run-hook open-filename)))))
+
+(mp.add_hook :on_load 50 on-load-file)
+
+(mp.register_event :shutdown
+                   (fn []
+                     (state.ytpb-mpv-handle:close)
+                     (os.remove state.socket-path)))
