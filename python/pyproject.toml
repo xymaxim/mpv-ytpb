@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ytpb-mpv"
+version = "2024.2.28"
+authors = [ { name = "Maxim Stolyarchuk" } ]
+keywords = [ "mpv", "youtube" ]
+license = { file = "LICENSE" }
+requires-python = ">=3.11"
+dependencies = [
+    "ytpb",
+    "python-mpv-jsonipc>=1.2.0",
+]
+
+[project.scripts]
+ytpb-mpv = "ytpb_mpv.__main__:main"
