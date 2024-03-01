@@ -8,11 +8,12 @@ package.preload["picker"] = package.preload["picker"] or function(...)
   local mp = require("mp")
   local input_prompt = nil
   local input_text = nil
-  local cursor_position = nil
+  local cursor_position = 1
+  local cursor_field = 1
   local timer = nil
   local date_pattern = "(%d%d%d%d)-(%d%d)-(%d%d) (%d%d):(%d%d):(%d%d) ([+-]%d%d)"
   local submit_date_pattern = "%1%2%3T%4%5%6%7"
-  local input_mask = "****-**-** **:**:** ***"
+  local fields = {{1, 2}, {3, 4}, {6, 7}, {9, 10}, {12, 13}, {15, 16}, {18, 19}, {21, 21}, {22, 24}}
   local date_constraints
   local function _1_(_241)
     return ((0 ~= _241) and (_241 <= 12))
@@ -63,43 +64,20 @@ package.preload["picker"] = package.preload["picker"] or function(...)
     end
     return ok_3f
   end
-  local function shift_cursor(direction)
-    local selected_3f = false
-    local new_position = (cursor_position + direction)
-    while not selected_3f do
-      do
-        local input_length = #input_mask
-        if (new_position == 0) then
-          new_position = input_length
-        else
-          local function _10_()
-            local x = new_position
-            return (x == (input_length + 1))
-          end
-          if ((nil ~= new_position) and _10_()) then
-            local x = new_position
-            new_position = 1
-          else
-          end
-        end
-      end
-      if ("*" ~= string.sub(input_mask, new_position, new_position)) then
-        new_position = (new_position + direction)
-      else
-        cursor_position = new_position
-        selected_3f = true
-      end
-    end
-    return nil
-  end
   local function replace_char(str, index, replace)
     return string.format("%s%s%s", str:sub(1, (index - 1)), replace, str:sub((index + 1)))
   end
+  local function replace_sub(str, start, _end, replace)
+    return string.format("%s%s%s", str:sub(1, (start - 1)), replace, str:sub((_end + 1)))
+  end
   local function show()
-    local under_cursor = input_text:sub(cursor_position, cursor_position)
+    local _let_10_ = fields[cursor_field]
+    local field_start = _let_10_[1]
+    local field_end = _let_10_[2]
+    local under_cursor = input_text:sub(field_start, field_end)
     local under_cursor_hl = string.format("{\\b1}%s{\\b0}", under_cursor)
-    local input = replace_char(input_text, cursor_position, under_cursor_hl)
-    return mp.osd_message(string.format("%s%s %s%s", ass_begin, input_prompt, input, ass_end), 999)
+    local input = replace_sub(input_text, field_start, field_end, under_cursor_hl)
+    return mp.osd_message(string.format("%s%s%s%s", ass_begin, input_prompt, input, ass_end), 999)
   end
   local function input_symbol(symbol)
     local new_input = replace_char(input_text, cursor_position, symbol)
@@ -110,34 +88,114 @@ package.preload["picker"] = package.preload["picker"] or function(...)
       return nil
     end
   end
-  local function make_shift_cursor_handler(direction)
-    local function _14_()
-      shift_cursor(direction)
+  local function shift_field(direction)
+    do
+      local new_position = (cursor_field + direction)
+      if (new_position == 0) then
+        cursor_field = #fields
+      else
+        local function _12_()
+          local x = new_position
+          return (x == (1 + #fields))
+        end
+        if ((nil ~= new_position) and _12_()) then
+          local x = new_position
+          cursor_field = 1
+        else
+          local _ = new_position
+          cursor_field = new_position
+        end
+      end
+    end
+    cursor_position = fields[cursor_field][1]
+    return nil
+  end
+  local function shift_cursor(direction)
+    local _let_14_ = fields[cursor_field]
+    local field_start = _let_14_[1]
+    local field_end = _let_14_[2]
+    local new_position = (cursor_position + direction)
+    local function _15_()
+      local x = new_position
+      return (field_end < x)
+    end
+    if ((nil ~= new_position) and _15_()) then
+      local x = new_position
+      return shift_field(1)
+    else
+      local function _16_()
+        local x = new_position
+        return (x < field_start)
+      end
+      if ((nil ~= new_position) and _16_()) then
+        local x = new_position
+        return shift_field(-1)
+      else
+        local _ = new_position
+        cursor_position = new_position
+        return nil
+      end
+    end
+  end
+  local function make_shift_field_handler(direction)
+    local function _18_()
+      shift_field(direction)
       return show()
     end
-    return _14_
+    return _18_
+  end
+  local function change_field_value(by)
+    local _let_19_ = fields[cursor_field]
+    local field_start = _let_19_[1]
+    local field_end = _let_19_[2]
+    local field_value = input_text:sub(field_start, field_end)
+    local new_value = nil
+    if (8 == cursor_field) then
+      if ("+" == field_value) then
+        new_value = "-"
+      else
+        new_value = "+"
+      end
+    else
+      new_value = string.format("%02d", (by + tonumber(field_value)))
+    end
+    local new_input = replace_sub(input_text, field_start, field_end, new_value)
+    if validate_input_date(new_input) then
+      input_text = new_input
+      return nil
+    else
+      return nil
+    end
+  end
+  local function change_field_value_handler(by)
+    local function _23_()
+      change_field_value(by)
+      return show()
+    end
+    return _23_
   end
   local submit_callback = nil
   local function submit_handler()
     local date = input_text:gsub(date_pattern, submit_date_pattern)
     return submit_callback(date)
   end
-  local key_handlers = {LEFT = make_shift_cursor_handler(-1), RIGHT = make_shift_cursor_handler(1), ENTER = submit_handler}
+  local key_handlers = {LEFT = make_shift_field_handler(-1), RIGHT = make_shift_field_handler(1), UP = change_field_value_handler(1), DOWN = change_field_value_handler(-1), ENTER = submit_handler}
   local input_symbols = {"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "+", "-"}
   for _, symbol in ipairs(input_symbols) do
-    local function _15_()
+    local function _24_()
       if input_symbol(symbol) then
         shift_cursor(1)
       else
       end
       return show()
     end
-    key_handlers[symbol] = _15_
+    key_handlers[symbol] = _24_
   end
   local function enable_key_bindings()
     for key, handler in pairs(key_handlers) do
+      local repeatable_keys = {LEFT = "", RIGHT = "", UP = "", DOWN = ""}
       local flag
-      if ((key == "LEFT") or (key == "RIGHT")) then
+      if repeatable_keys[key] then
         flag = "repeatable"
       else
         flag = nil
@@ -235,23 +293,23 @@ local function parse_mpd_start_time(content)
     local year, month, day, hour, min, sec, ms = string.match(value, pattern)
     local sec0 = (sec + offset)
     local ms0 = tonumber(ms)
-    local function _20_()
+    local function _29_()
       if ms0 then
         return (ms0 / 1000)
       else
         return 0
       end
     end
-    return (os.time({year = year, month = month, day = day, hour = hour, min = min, sec = sec0}) + _20_())
+    return (os.time({year = year, month = month, day = day, hour = hour, min = min, sec = sec0}) + _29_())
   end
   local _, _0, start_time_str = content:find("availabilityStartTime=\"([^\"]+)\"")
   return isodate__3etimestamp(start_time_str)
 end
 local function update_current_mpd()
   state["current-mpd-path"] = mp.get_property("path")
-  local _21_ = io.open(state["current-mpd-path"])
-  if (nil ~= _21_) then
-    local f = _21_
+  local _30_ = io.open(state["current-mpd-path"])
+  if (nil ~= _30_) then
+    local f = _30_
     state["current-start-time"] = parse_mpd_start_time(f:read("*all"))
     return f:close()
   else
@@ -264,11 +322,11 @@ local function seek_offset__3eseconds(value)
     local pattern = "(%d+%.?%d*)(%a*)"
     local symbols = {d = 86400, h = 3600, m = 60, s = 1}
     for number, symbol in string.gmatch(value, pattern) do
-      local function _23_()
+      local function _32_()
         local x = symbol
         return symbols[x]
       end
-      if ((nil ~= symbol) and _23_()) then
+      if ((nil ~= symbol) and _32_()) then
         local x = symbol
         total_seconds = (total_seconds + (number * symbols[x]))
       elseif (symbol == "") then
@@ -286,14 +344,14 @@ local function format_clock_time_string(timestamp)
   local hours = math.floor((settings["utc-offset"] / 3600))
   local minutes = math.floor(((settings["utc-offset"] % 3600) / 60))
   local hh_part = string.format("%+03d", hours)
-  local function _25_()
+  local function _34_()
     if (0 > minutes) then
       return string.format(":%02d", minutes)
     else
       return ""
     end
   end
-  return (string.format("%s %s", date_time_part, hh_part) .. _25_())
+  return (string.format("%s %s", date_time_part, hh_part) .. _34_())
 end
 local function draw_clock()
   local time_pos = mp.get_property_native("time-pos", 0)
@@ -360,16 +418,16 @@ local function mark_new_point()
   do
     local time_pos = mp.get_property_native("time-pos")
     local new_point = Point:new(time_pos, state["current-start-time"], state["current-mpd-path"])
-    local _30_ = state["marked-points"]
-    if (((_G.type(_30_) == "table") and (_30_[1] == nil)) or ((_G.type(_30_) == "table") and (nil ~= _30_[1]) and (nil ~= _30_[2]))) then
+    local _39_ = state["marked-points"]
+    if (((_G.type(_39_) == "table") and (_39_[1] == nil)) or ((_G.type(_39_) == "table") and (nil ~= _39_[1]) and (nil ~= _39_[2]))) then
       state["marked-points"][1] = new_point
       state["current-mark"] = 1
       if state["marked-points"][2] then
         state["marked-points"][2] = nil
       else
       end
-    elseif ((_G.type(_30_) == "table") and (nil ~= _30_[1]) and (_30_[2] == nil)) then
-      local a = _30_[1]
+    elseif ((_G.type(_39_) == "table") and (nil ~= _39_[1]) and (_39_[2] == nil)) then
+      local a = _39_[1]
       if (new_point.timestamp >= a.timestamp) then
         state["marked-points"][2] = new_point
         state["current-mark"] = 2
@@ -392,9 +450,9 @@ local function edit_current_point()
       local new_point = Point:new(time_pos, state["current-start-time"], state["current-mpd-path"])
       local time_string = new_point:format(settings["utc-offset"])
       do end (state["marked-points"])[state["current-mark"]] = new_point
-      local _let_34_ = state["marked-points"]
-      local a = _let_34_[1]
-      local b = _let_34_[2]
+      local _let_43_ = state["marked-points"]
+      local a = _let_43_[1]
+      local b = _let_43_[2]
       if (b and (a.timestamp > b.timestamp)) then
         state["marked-points"] = {b, a}
         if (new_point.timestamp == b.timestamp) then
@@ -461,12 +519,12 @@ end
 local function go_to_point(index)
   local point
   do
-    local t_42_ = state["marked-points"]
-    if (nil ~= t_42_) then
-      t_42_ = t_42_[index]
+    local t_51_ = state["marked-points"]
+    if (nil ~= t_51_) then
+      t_51_ = t_51_[index]
     else
     end
-    point = t_42_
+    point = t_51_
   end
   if point then
     state["current-mark"] = index
@@ -507,16 +565,16 @@ local function render_column(column)
     do
       local key_dividers_num = (#key.binds - 1)
       local total_label_length
-      local function _48_()
+      local function _57_()
         local total = 0
-        for _0, _49_ in ipairs(key.binds) do
-          local _each_50_ = _49_
-          local key_label = _each_50_[1]
+        for _0, _58_ in ipairs(key.binds) do
+          local _each_59_ = _58_
+          local key_label = _each_59_[1]
           total = (total + #key_label)
         end
         return total
       end
-      total_label_length = (key_dividers_num + _48_())
+      total_label_length = (key_dividers_num + _57_())
       if (max_label_length < total_label_length) then
         max_label_length = total_label_length
       else
@@ -534,13 +592,13 @@ local function render_column(column)
   table.insert(rendered_lines, string.format("%s %s%s%s", ass_fs(theme["main-menu-font-size"], ass_b(column.header)), ass_fs(key_font_size, ass_b(string.rep(" ", max_label_length))), ass_fs(theme["main-menu-font-size"], ""), fill_rest_with(" ", column.header, (max_desc_length + right_margin))))
   for _, key in ipairs(column.keys) do
     local label
-    local _53_
+    local _62_
     do
       local tbl_18_auto = {}
       local i_19_auto = 0
-      for _0, _54_ in ipairs(key.binds) do
-        local _each_55_ = _54_
-        local key_label = _each_55_[1]
+      for _0, _63_ in ipairs(key.binds) do
+        local _each_64_ = _63_
+        local key_label = _each_64_[1]
         local val_20_auto = key_label
         if (nil ~= val_20_auto) then
           i_19_auto = (i_19_auto + 1)
@@ -548,9 +606,9 @@ local function render_column(column)
         else
         end
       end
-      _53_ = tbl_18_auto
+      _62_ = tbl_18_auto
     end
-    label = table.concat(_53_, "/")
+    label = table.concat(_62_, "/")
     local aligned_label = (fill_rest_with("\\h", label, max_label_length) .. label)
     table.insert(rendered_lines, string.format("%s%s%s", ass_fs(key_font_size, ass_b(aligned_label)), ass_fs(theme["main-menu-font-size"], (" " .. key.desc)), fill_rest_with(" ", key.desc, (max_desc_length + right_margin))))
   end
@@ -577,7 +635,7 @@ local function stack_columns(...)
   local lines = {}
   do
     local max_column_size
-    local function _59_(...)
+    local function _68_(...)
       local tbl_18_auto = {}
       local i_19_auto = 0
       for _, column in ipairs({...}) do
@@ -590,7 +648,7 @@ local function stack_columns(...)
       end
       return tbl_18_auto
     end
-    max_column_size = math.max(table.unpack(_59_(...)))
+    max_column_size = math.max(table.unpack(_68_(...)))
     for i = 1, max_column_size do
       local line = ""
       for _, column in pairs({...}) do
@@ -602,16 +660,16 @@ local function stack_columns(...)
   return lines
 end
 local main_menu_map = nil
-local function _61_()
+local function _70_()
   local ass_tags = ass("\\an4\\fnmonospace\\bord2", ass_c_2a(theme["main-menu-color"]))
   do
-    local _let_62_ = main_menu_map
-    local rewind_col = _let_62_[1]
-    local mark_mode_col = _let_62_[2]
-    local other_col = _let_62_[3]
+    local _let_71_ = main_menu_map
+    local rewind_col = _let_71_[1]
+    local mark_mode_col = _let_71_[2]
+    local other_col = _let_71_[3]
     local rendered_columns = {render_column(rewind_col), post_render_mark_column(render_column(mark_mode_col)), render_column(other_col)}
     local stacked_columns = stack_columns(table.unpack(rendered_columns))
-    local _63_
+    local _72_
     do
       local tbl_18_auto = {}
       local i_19_auto = 0
@@ -623,18 +681,18 @@ local function _61_()
         else
         end
       end
-      _63_ = tbl_18_auto
+      _72_ = tbl_18_auto
     end
-    state["main-overlay"].data = table.concat(_63_, "\\N")
+    state["main-overlay"].data = table.concat(_72_, "\\N")
   end
   return (state["main-overlay"]):update()
 end
-display_main_overlay = _61_
+display_main_overlay = _70_
 local function rewind_key_handler()
   mp.set_property_native("pause", true)
   local time_pos = mp.get_property_native("time-pos", 0)
   local time_string = format_clock_time_string((time_pos + state["current-start-time"]))
-  local function _65_(date)
+  local function _74_(date)
     local function callback(mpd_path, time_pos0)
       mp.unregister_script_message("yp:rewind-completed")
       return register_seek_after_restart(time_pos0)
@@ -642,7 +700,7 @@ local function rewind_key_handler()
     picker.terminate()
     return request_rewind(date, callback)
   end
-  return picker.get({prompt = "> Rewind to:\n", default = string.gsub(time_string, "\226\128\147", "-"), ["cursor-pos"] = 12, submit = _65_})
+  return picker.get({prompt = "> Rewind to:\n", default = string.gsub(time_string, "\226\128\147", "-"), ["cursor-pos"] = 12, submit = _74_})
 end
 local function seek_backward_key_handler()
   mp.osd_message("Seeking backward...", 999)
@@ -694,7 +752,7 @@ local function toggle_clock_key_handler()
   end
 end
 local function change_timezone_key_handler()
-  local function _69_(value)
+  local function _78_(value)
     do
       local hours = 3600
       settings["utc-offset"] = ((tonumber(value) or 0) * hours)
@@ -706,7 +764,7 @@ local function change_timezone_key_handler()
     end
     return input.terminate()
   end
-  return input.get({prompt = "New timezone offset: UTC", default_text = "+00", cursor_position = 2, submit = _69_})
+  return input.get({prompt = "New timezone offset: UTC", default_text = "+00", cursor_position = 2, submit = _78_})
 end
 local key_binding_names = {}
 local function deactivate()
@@ -726,11 +784,11 @@ local function register_keys(menu_map)
   local added_key_bindings = {}
   for _, column in ipairs(main_menu_map) do
     for _0, item in ipairs(column.keys) do
-      for _1, _72_ in ipairs(item.binds) do
-        local _each_73_ = _72_
-        local key = _each_73_[1]
-        local name = _each_73_[2]
-        local func = _each_73_[3]
+      for _1, _81_ in ipairs(item.binds) do
+        local _each_82_ = _81_
+        local key = _each_82_[1]
+        local name = _each_82_[2]
+        local func = _each_82_[3]
         mp.add_forced_key_binding(key, name, func)
         table.insert(added_key_bindings, name)
       end
@@ -743,13 +801,13 @@ local function define_main_menu_map()
     local bindings = {...}
     return {desc = description, binds = bindings}
   end
-  local function _74_()
+  local function _83_()
     return go_to_point(1)
   end
-  local function _75_()
+  local function _84_()
     return go_to_point(2)
   end
-  return {{header = "Rewind and seek", keys = {define_key_line("rewind", {"r", "rewind", rewind_key_handler}), define_key_line("seek backward/forward", {"<", "seek-backward", seek_backward_key_handler}, {">", "seek-forward", seek_forward_key_handler}), define_key_line("change seek offset", {"F", "change-seek-offset", change_seek_offset_key_handler})}}, {header = "Mark mode", keys = {define_key_line("mark new point", {"m", "mark-point", mark_new_point}), define_key_line("edit point", {"e", "edit-point", edit_current_point}), define_key_line("go to point A/B", {"a", "go-to-point-A", _74_}, {"b", "go-to-point-B", _75_})}}, {header = "Other", keys = {define_key_line("take screenshot", {"s", "take-screenshot", take_screenshot_key_handler}), define_key_line("toggle clock", {"C", "toggle-clock", toggle_clock_key_handler}), define_key_line("change timezone", {"T", "change-timezone", change_timezone_key_handler}), define_key_line("quit", {"q", "quit", deactivate})}}}
+  return {{header = "Rewind and seek", keys = {define_key_line("rewind", {"r", "rewind", rewind_key_handler}), define_key_line("seek backward/forward", {"<", "seek-backward", seek_backward_key_handler}, {">", "seek-forward", seek_forward_key_handler}), define_key_line("change seek offset", {"F", "change-seek-offset", change_seek_offset_key_handler})}}, {header = "Mark mode", keys = {define_key_line("mark new point", {"m", "mark-point", mark_new_point}), define_key_line("edit point", {"e", "edit-point", edit_current_point}), define_key_line("go to point A/B", {"a", "go-to-point-A", _83_}, {"b", "go-to-point-B", _84_})}}, {header = "Other", keys = {define_key_line("take screenshot", {"s", "take-screenshot", take_screenshot_key_handler}), define_key_line("toggle clock", {"C", "toggle-clock", toggle_clock_key_handler}), define_key_line("change timezone", {"T", "change-timezone", change_timezone_key_handler}), define_key_line("quit", {"q", "quit", deactivate})}}}
 end
 local function activate()
   state["activated?"] = true
@@ -763,14 +821,14 @@ local function activate()
     return nil
   end
 end
-local function _77_()
+local function _86_()
   if not state["activated?"] then
     return activate()
   else
     return deactivate()
   end
 end
-mp.add_forced_key_binding("Ctrl+p", "activate", _77_)
+mp.add_forced_key_binding("Ctrl+p", "activate", _86_)
 local function run_hook(ytpb_url)
   mp.set_property("stream-open-filename", "null://")
   mp.set_property("idle", "yes")
@@ -799,8 +857,8 @@ local function on_load_file()
   end
 end
 mp.add_hook("on_load", 50, on_load_file)
-local function _80_()
+local function _89_()
   do end (state["ytpb-mpv-handle"]):close()
   return os.remove(state["socket-path"])
 end
-return mp.register_event("shutdown", _80_)
+return mp.register_event("shutdown", _89_)

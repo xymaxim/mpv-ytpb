@@ -2,13 +2,23 @@
 
 (var input-prompt nil)
 (var input-text nil)
-(var cursor-position nil)
+(var cursor-position 1)
+(var cursor-field 1)
 
 (var timer nil)
 
 (local date-pattern "(%d%d%d%d)-(%d%d)-(%d%d) (%d%d):(%d%d):(%d%d) ([+-]%d%d)")
 (local submit-date-pattern "%1%2%3T%4%5%6%7")
-(local input-mask "****-**-** **:**:** ***")
+
+(local fields [[1 2]
+               [3 4]
+               [6 7]
+               [9 10]
+               [12 13]
+               [15 16]
+               [18 19]
+               [21 21]
+               [22 24]])
 
 (local date-constraints {:m #(and (not= 0 $1) (<= $1 12))
                          :d #(and (not= 0 $1) (<= $1 31))
@@ -32,28 +42,18 @@
         (set ok? false)))
   ok?)
 
-(fn shift-cursor [direction]
-  (var selected? false)
-  (var new-position (+ cursor-position direction))
-  (while (not selected?)
-    (let [input-length (length input-mask)]
-      (case new-position
-        0 (set new-position input-length)
-        (where x (= x (+ input-length 1))) (set new-position 1)))
-    (if (not= "*" (string.sub input-mask new-position new-position))
-        (set new-position (+ new-position direction))
-        (do
-          (set cursor-position new-position)
-          (set selected? true)))))
-
 (fn replace-char [str index replace]
   (string.format "%s%s%s" (str:sub 1 (- index 1)) replace (str:sub (+ index 1))))
 
+(fn replace-sub [str start end replace]
+  (string.format "%s%s%s" (str:sub 1 (- start 1)) replace (str:sub (+ end 1))))
+
 (fn show []
-  (let [under-cursor (input-text:sub cursor-position cursor-position)
+  (let [[field-start field-end] (. fields cursor-field)
+        under-cursor (input-text:sub field-start field-end)
         under-cursor-hl (string.format "{\\b1}%s{\\b0}" under-cursor)
-        input (replace-char input-text cursor-position under-cursor-hl)]
-    (mp.osd_message (string.format "%s%s %s%s" ass-begin input-prompt input
+        input (replace-sub input-text field-start field-end under-cursor-hl)]
+    (mp.osd_message (string.format "%s%s%s%s" ass-begin input-prompt input
                                    ass-end) 999)))
 
 (fn input-symbol [symbol]
@@ -61,9 +61,41 @@
     (when (validate-input-date new-input)
       (set input-text new-input) true)))
 
-(fn make-shift-cursor-handler [direction]
+(fn shift-field [direction]
+  (let [new-position (+ cursor-field direction)]
+    (case new-position
+      0 (set cursor-field (length fields))
+      (where x (= x (+ 1 (length fields)))) (set cursor-field 1)
+      _ (set cursor-field new-position)))
+  (set cursor-position (. (. fields cursor-field) 1)))
+
+(fn shift-cursor [direction]
+  (let [[field-start field-end] (. fields cursor-field)
+        new-position (+ cursor-position direction)]
+    (case new-position
+      (where x (< field-end x)) (shift-field 1)
+      (where x (< x field-start)) (shift-field -1)
+      _ (set cursor-position new-position))))
+
+(fn make-shift-field-handler [direction]
   (fn []
-    (shift-cursor direction)
+    (shift-field direction)
+    (show)))
+
+(fn change-field-value [by]
+  (let [[field-start field-end] (. fields cursor-field)
+        field-value (input-text:sub field-start field-end)]
+    (var new-value nil)
+    (if (= 8 cursor-field)
+        (set new-value (if (= "+" field-value) "-" "+"))
+        (set new-value (string.format "%02d" (+ by (tonumber field-value)))))
+    (let [new-input (replace-sub input-text field-start field-end new-value)]
+      (if (validate-input-date new-input)
+          (set input-text new-input)))))
+
+(fn change-field-value-handler [by]
+  (fn []
+    (change-field-value by)
     (show)))
 
 (var submit-callback nil)
@@ -72,8 +104,10 @@
   (let [date (input-text:gsub date-pattern submit-date-pattern)]
     (submit-callback date)))
 
-(local key-handlers {:LEFT (make-shift-cursor-handler -1)
-                     :RIGHT (make-shift-cursor-handler 1)
+(local key-handlers {:LEFT (make-shift-field-handler -1)
+                     :RIGHT (make-shift-field-handler 1)
+                     :UP (change-field-value-handler 1)
+                     :DOWN (change-field-value-handler -1)
                      :ENTER submit-handler})
 
 (local input-symbols [:0 :1 :2 :3 :4 :5 :6 :7 :8 :9 "+" "-"])
@@ -85,7 +119,8 @@
 
 (fn enable-key-bindings []
   (each [key handler (pairs key-handlers)]
-    (let [flag (if (or (= key :LEFT) (= key :RIGHT)) :repeatable nil)]
+    (let [repeatable-keys {:LEFT "" :RIGHT "" :UP "" :DOWN ""}
+          flag (if (. repeatable-keys key) :repeatable nil)]
       (mp.add_forced_key_binding key (.. :picker- key) handler flag))))
 
 (fn activate []
