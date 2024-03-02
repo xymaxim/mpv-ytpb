@@ -4,9 +4,9 @@
 interactively. The script detects `ytpb://<STREAM>` links passed to the mpv
 player, and launches the *[ytpb](https://github.com/xymaxim/ytpb)* instance to
 communicate with it via JSON IPC. A set of script key bindings allows to play,
-mark and export past moments of live streams.
+mark, and export past moments of live streams.
 
-![mpv-ytpb user interface](./images/mpv-ytpb-ui.png)
+<img src="./images/mpv-ytpb-ui.png" width="80%">
 
 ## Install
 
@@ -46,8 +46,8 @@ enter a target date. An user-defined, arbitrary offset is used instead. The
 offset value can be changed with `F` key or via options.
 
 The format of the input offset value (after `F` pressed) is
-`[<days>d][<hours>H][<minutes>M][<seconds>S]`, where each part is optional, but
-order must be preserved. For example, `1h`, or `1h30m`, or `120m`.
+`[<days>d][<hours>h][<minutes>m][<seconds>s]`, where each part is optional, but
+order must be preserved. For example, `1h`, `1h30m`, or `120m`.
 
 ### Mark mode
 
