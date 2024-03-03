@@ -6,7 +6,7 @@ player, and launches the *[ytpb](https://github.com/xymaxim/ytpb)* instance to
 communicate with it via JSON IPC. A set of script key bindings allows to play,
 mark, and export past moments of live streams.
 
-<img src="./images/mpv-ytpb-ui.png" width="80%">
+![mpv-ytpb user interface](./images/mpv-ytpb-ui.png)
 
 ## Install
 
