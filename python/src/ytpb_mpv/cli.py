@@ -148,6 +148,7 @@ class Listener:
         metavar="SPEC",
         type=FormatSpecParamType(FormatSpecType.AUDIO),
         help="Audio format to play.",
+        default="itag eq 140",
     ),
     cloup.option(
         "-vf",
@@ -155,6 +156,7 @@ class Listener:
         metavar="SPEC",
         type=FormatSpecParamType(FormatSpecType.VIDEO),
         help="Video format to play.",
+        default="best([@webm or @mp4] and @<=720p and @30fps)",
     ),
 )
 @yt_dlp_option
