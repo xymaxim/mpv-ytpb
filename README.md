@@ -36,26 +36,26 @@ the script main menu.
 
 Rewinding to a moment in a stream is bound to `r` key. It opens the date and
 time picker with dynamically bound keys: to select (`LEFT`, `RIGHT`) and change
-(`RIGHT`, `LEFT`) input parts.
+(`UP`, `DOWN`) input parts.
 
 ### Seeking
 
 #### Nearby seeking
 
-If ``cache=yes`` is set in ``mpv.conf`` (highly recommended), seeking works
-smoothly within cached ranges as well as the mpv's A-B loop functionality with
-the default keys.
+If ``cache=yes`` is set in ``mpv.conf`` (recommended), seeking works smoothly
+within cached ranges as well as the mpv's A-B loop functionality with the
+default keys.
 
 #### Seeking by rewinding
 
 Seeking backward and forward outside of cached ranges is possible with `<` and
 `>` keys. The seeking by rewinding is a quick form of rewinding, with no need to
 enter a target date. An user-defined, arbitrary offset is used instead. The
-offset value can be changed with `F` key or via options.
+offset value can be changed with `F` key.
 
 The format of the input offset value (after `F` pressed) is
 `[<days>d][<hours>h][<minutes>m][<seconds>s]`, where each part is optional, but
-order must be preserved. For example, `1h`, `1h30m`, or `120m`.
+order must be preserved. For example: `1h`, `1h30m`, `120m`.
 
 ### Mark mode
 
@@ -98,11 +98,10 @@ After activation, the following key bindings are dynamically added:
 Rewinding and seeking actions are associated with sending the `yp:rewind` script
 message to *ytpb-mpv* and listening back to a `yp:rewind-completed` message to
 run a complete callback. At the same time, *ytpb-mpv* composes a new MPEG-DASH
-MPD starting with a target media segment and execute the `loadfile` command. The
-paused first segment is appeared on a screen, and the script runs the complete
-callback to seek to a start position and update shown text overlays. It would be
-nice to avoid that short quirk and seek straight to the start position in the
-future.
+MPD starting with a target media segment and executes the `loadfile`
+command. The paused first segment is appeared on a screen, and the script seeks
+to a start position and updates shown text overlays. It would be nice to avoid
+that short quirk and seek straight to the start position in the future.
 
 ## Known limitations
 
