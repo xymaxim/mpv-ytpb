@@ -36,7 +36,7 @@ the script main menu.
 
 Rewinding to a moment in a stream is bound to `r` key. It opens the date and
 time picker with dynamically bound keys: to select (`LEFT`, `RIGHT`) and change
-input parts (`RIGHT`, `LEFT`).
+(`RIGHT`, `LEFT`) input parts.
 
 ### Seeking
 
