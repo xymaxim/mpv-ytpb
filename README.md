@@ -10,12 +10,15 @@ mark, and export past moments of live streams.
 
 ## Install
 
-*mpv-ytpb* requires *[ytpb](https://github.com/xymaxim/ytpb)* to be
+*mpv-ytpb* requires *[Ytpb](https://github.com/xymaxim/ytpb)* to be
 installed in your `PATH`. Also, playing needs a custom mpv build with patched
 FFmpeg (see xymaxim/ytpb#4 for details).
 
-To install this script, copy `ytpb.lua` to your mpv `~~/scripts`
-[directory](https://mpv.io/manual/master/#files).
+
+1. Build a custom mpv: xymaxim/ytpb#4
+2. Install ytpb: ``$ pipx install ytpb``
+3. Install ytpb-mpv: ``$ pipx inject ytpb ytpb-mpv``
+4. Copy `ytpb.lua` to your mpv `~~/scripts` [directory](https://mpv.io/manual/master/#files)
 
 ## Usage 
 
