@@ -31,7 +31,7 @@ FFmpeg (see xymaxim/ytpb#4 for details).
 
     $ mpv ytpb://<STREAM>,
 
-where `<STREAM>` is an YouTube video URL or ID.
+where `<STREAM>` is a YouTube video URL or ID.
 
 It will open a player with a stream playing and bind `Ctrl+p` key to activate
 the script [main menu](#key-bindings).
@@ -54,7 +54,7 @@ default keys.
 
 Seeking backward and forward outside of cached ranges is possible with `<` and
 `>` keys. The seeking by rewinding is a quick form of rewinding, with no need to
-enter a target date. An user-defined, arbitrary offset is used instead. The
+enter a target date. A user-defined, arbitrary offset is used instead. The
 offset value can be changed with `F` key.
 
 The format of the input offset value (after `F` pressed) is
@@ -79,7 +79,7 @@ After activation, the following key bindings are dynamically added:
 ### Rewind and seek
 
 * `r` — rewind to a date
-* `<`/`>` — seek back and forward to an relative offset
+* `<`/`>` — seek back and forward to a relative offset
 * `F` — change a seek offset
 
 ### Mark mode
