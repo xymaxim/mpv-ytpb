@@ -1,3 +1,5 @@
+import atexit
+import shutil
 from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
@@ -36,16 +38,9 @@ class Listener:
         self._mpd_path: Path | None = None
         self._mpd_start_time: datetime | None = None
 
-        self._mpv = MPV(
-            start_mpv=False,
-            ipc_socket=str(ipc_server),
-            quit_callback=self._cleanup_on_quit,
-        )
+        self._mpv = MPV(start_mpv=False, ipc_socket=str(ipc_server))
 
         self._mpv.bind_event("client-message", self._client_message_handler)
-
-    def _cleanup_on_quit(self) -> None:
-        pass
 
     def _client_message_handler(self, event: dict) -> None:
         logger.debug(event)
@@ -175,6 +170,10 @@ def listen(
     stream_url: str,
 ) -> int:
     playback = create_playback(ctx)
+
+    @atexit.register
+    def on_exit():
+        shutil.rmtree(playback.get_temp_directory())
 
     if audio_format:
         logger.debug("Query audio streams by format spec", spec=audio_format)
