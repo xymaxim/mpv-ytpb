@@ -23,7 +23,7 @@ FFmpeg (see xymaxim/ytpb#4 for details).
    instruction
 2. Install [ytpb](https://github.com/xymaxim/ytpb): ``$ pipx install ytpb``
 3. Install [ytpb-mpv](https://github.com/xymaxim/mpv-ytpb/tree/main/python): ``$
-   pipx inject ytpb ytpb-mpv``
+   pipx inject ytpb ytpb-mpv --include-apps``
 4. Copy `ytpb.lua` to your mpv `~~/scripts`
    [directory](https://mpv.io/manual/master/#files)
 
