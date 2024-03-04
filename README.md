@@ -100,7 +100,7 @@ message to *ytpb-mpv* and listening back to a `yp:rewind-completed` message to
 run a complete callback. At the same time, *ytpb-mpv* composes a new MPEG-DASH
 MPD starting with a target media segment and executes the `loadfile`
 command. The paused first segment is appeared on a screen, and the script seeks
-to a start position and updates shown text overlays. It would be nice to avoid
+to a start position. It would be nice to avoid
 that short quirk and seek straight to the start position in the future.
 
 ## Known limitations
