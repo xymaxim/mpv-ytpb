@@ -3,22 +3,22 @@
 (var input-prompt nil)
 (var input-text nil)
 (var cursor-position 1)
-(var cursor-field 1)
+(var cursor-field 5)
 
 (var timer nil)
 
 (local date-pattern "(%d%d%d%d)-(%d%d)-(%d%d) (%d%d):(%d%d):(%d%d) ([+-]%d%d)")
 (local submit-date-pattern "%1%2%3T%4%5%6%7")
 
-(local fields [[1 2]
-               [3 4]
-               [6 7]
-               [9 10]
-               [12 13]
-               [15 16]
-               [18 19]
-               [21 21]
-               [22 24]])
+(local fields [[1 2]      ; yy
+               [3 4]      ; yy
+               [6 7]      ; mm
+               [9 10]     ; dd
+               [12 13]    ; HH
+               [15 16]    ; MM
+               [18 19]    ; SS
+               [21 21]    ; +/-
+               [22 24]])  ; zz
 
 (local date-constraints {:m #(and (not= 0 $1) (<= $1 12))
                          :d #(and (not= 0 $1) (<= $1 31))
