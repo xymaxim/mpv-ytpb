@@ -5,7 +5,7 @@ interactively. The script detects `ytpb://<STREAM>` links passed to the mpv
 player, and launches the
 *[ytpb-mpv](https://github.com/xymaxim/mpv-ytpb/tree/main/python)* socket
 listener to handle the rewind functionality. A set of script key bindings allows
-to play, mark, and export past moments of live streams.
+to play, mark, and export (TODO) past moments of live streams.
 
 ![mpv-ytpb user interface](./images/mpv-ytpb-ui.png)
 
@@ -18,10 +18,14 @@ installed in your `PATH`. Also, playing needs a custom mpv build with patched
 FFmpeg (see xymaxim/ytpb#4 for details).
 
 
-1. Build a custom mpv: see [this](https://github.com/xymaxim/ytpb/issues/4#issuecomment-1975844281) instruction
+1. Build a custom mpv: follow
+   [this](https://github.com/xymaxim/ytpb/issues/4#issuecomment-1975844281)
+   instruction
 2. Install [ytpb](https://github.com/xymaxim/ytpb): ``$ pipx install ytpb``
-3. Install [ytpb-mpv](https://github.com/xymaxim/mpv-ytpb/tree/main/python): ``$ pipx inject ytpb ytpb-mpv``
-4. Copy `ytpb.lua` to your mpv `~~/scripts` [directory](https://mpv.io/manual/master/#files)
+3. Install [ytpb-mpv](https://github.com/xymaxim/mpv-ytpb/tree/main/python): ``$
+   pipx inject ytpb ytpb-mpv``
+4. Copy `ytpb.lua` to your mpv `~~/scripts`
+   [directory](https://mpv.io/manual/master/#files)
 
 ## Usage
 
