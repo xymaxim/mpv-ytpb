@@ -18,9 +18,9 @@ installed in your `PATH`. Also, playing needs a custom mpv build with patched
 FFmpeg (see xymaxim/ytpb#4 for details).
 
 
-1. Build a custom mpv: xymaxim/ytpb#4
-2. Install ytpb: ``$ pipx install ytpb``
-3. Install ytpb-mpv: ``$ pipx inject ytpb ytpb-mpv``
+1. Build a custom mpv: see [this](https://github.com/xymaxim/ytpb/issues/4#issuecomment-1975844281) instruction
+2. Install [ytpb](https://github.com/xymaxim/ytpb): ``$ pipx install ytpb``
+3. Install [ytpb-mpv](https://github.com/xymaxim/mpv-ytpb/tree/main/python): ``$ pipx inject ytpb ytpb-mpv``
 4. Copy `ytpb.lua` to your mpv `~~/scripts` [directory](https://mpv.io/manual/master/#files)
 
 ## Usage
@@ -119,13 +119,16 @@ clock (create and load a new manifest at the current time and continue playing).
 
 ## Acknowledgements
 
+The script is written in [Fennel](https://fennel-lang.org/), a Lisp-like
+language that compiles to Lua.
+
 The hook uses the
 [python-mpv-jsonipc](https://github.com/iwalton3/python-mpv-jsonipc) package to
 communicate with mpv via JSON-IPC.
 
 The date and time picker was inspired by the
 [seek-to.lua](https://github.com/occivink/mpv-scripts/tree/master?tab=readme-ov-file#seek-tolua)
-script script.
+script.
 
 ## License
 
