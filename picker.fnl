@@ -139,7 +139,8 @@
 (fn terminate []
   (each [key _ (pairs key-handlers)]
     (mp.remove_key_binding (.. :picker- key)))
-  (timer:kill)
+  (if timer
+      (timer:kill))
   (mp.osd_message ""))
 
 (tset key-handlers :ESC terminate)
