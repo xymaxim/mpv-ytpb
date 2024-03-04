@@ -232,7 +232,7 @@ package.preload["picker"] = package.preload["picker"] or function(...)
   return {get = get, terminate = terminate}
 end
 picker = require("picker")
-local theme = {["main-menu-color"] = "ffffff", ["main-menu-font-size"] = 18, ["mark-mode-color"] = "ffc66e", ["mark-mode-font-size"] = 28, ["clock-color"] = "ffffff", ["clock-font-size"] = 32}
+local theme = {["main-menu-color"] = "ffffff", ["main-menu-font-size"] = 18, ["mark-mode-color"] = "ffffff", ["mark-mode-font-size"] = 28, ["clock-color"] = "ffffff", ["clock-font-size"] = 32}
 local state = {["current-mpd-path"] = nil, ["current-start-time"] = nil, ["main-overlay"] = nil, ["mark-overlay"] = nil, ["marked-points"] = {}, ["current-mark"] = nil, ["clock-overlay"] = nil, ["clock-timer"] = nil, ["activated?"] = false, ["mark-mode-enabled?"] = false}
 local socket_path = nil
 local ytpb_mpv_handle = nil

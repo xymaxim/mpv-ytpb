@@ -8,7 +8,7 @@
 
 (local theme {:main-menu-color :ffffff
               :main-menu-font-size 18
-              :mark-mode-color :ffc66e
+              :mark-mode-color :ffffff
               :mark-mode-font-size 28
               :clock-color :ffffff
               :clock-font-size 32})
