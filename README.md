@@ -30,7 +30,7 @@ FFmpeg (see xymaxim/ytpb#4 for details).
 where `<STREAM>` is an YouTube video URL or ID.
 
 It will open a player with a stream playing and bind `Ctrl+p` key to activate
-the script main menu.
+the script [main menu](## Key bindings).
 
 ### Rewinding
 
@@ -132,4 +132,4 @@ script.
 
 ## License
 
-The project is licensed under the MIT license. See LICENSE for details.
+The project is licensed under the MIT license. See [LICENSE](LICENSE) for details.
