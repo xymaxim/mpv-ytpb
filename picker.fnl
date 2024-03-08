@@ -10,15 +10,16 @@
 (local date-pattern "(%d%d%d%d)-(%d%d)-(%d%d) (%d%d):(%d%d):(%d%d) ([+-]%d%d)")
 (local submit-date-pattern "%1%2%3T%4%5%6%7")
 
-(local fields [[1 2]      ; yy
-               [3 4]      ; yy
-               [6 7]      ; mm
-               [9 10]     ; dd
-               [12 13]    ; HH
-               [15 16]    ; MM
-               [18 19]    ; SS
-               [21 21]    ; +/-
-               [22 24]])  ; zz
+;; yyyy-mm-dd HH:MM:SS"+/-"zz
+(local fields [[1 2]
+               [3 4]
+               [6 7]
+               [9 10]
+               [12 13]
+               [15 16]
+               [18 19]
+               [21 21]
+               [22 24]])
 
 (local date-constraints {:m #(and (not= 0 $1) (<= $1 12))
                          :d #(and (not= 0 $1) (<= $1 31))
@@ -83,15 +84,40 @@
     (show)))
 
 (fn change-field-value [by]
+  (fn limit-value [value min max]
+    (case value
+      (where x (< x min)) min
+      (where x (> x max)) max
+      _ value))
+
+  (fn cycle-value [value field]
+    (fn cycle-within [x min max]
+      (case x
+        (where x (< x min)) max
+        (where x (> x max)) min
+        _ x))
+
+    (case field
+      3 (cycle-within value 1 12)
+      4 (cycle-within value 1 31)
+      5 (cycle-within value 0 23)
+      (where (or 6 7)) (cycle-within value 0 59)
+      _ value))
+
   (let [[field-start field-end] (. fields cursor-field)
-        field-value (input-text:sub field-start field-end)]
-    (var new-value nil)
-    (if (= 8 cursor-field)
-        (set new-value (if (= "+" field-value) "-" "+"))
-        (set new-value (string.format "%02d" (+ by (tonumber field-value)))))
-    (let [new-input (replace-sub input-text field-start field-end new-value)]
-      (if (validate-input-date new-input)
-          (set input-text new-input)))))
+        field-value (input-text:sub field-start field-end)
+        new-value (case cursor-field
+                    8 (if (= "+" field-value) "-" "+")
+                    _ (let [attempt-value (+ by (tonumber field-value))
+                            accepted-value (if (or (= cursor-field 1)
+                                                   (= cursor-field 2))
+                                               (limit-value attempt-value 0 99)
+                                               (cycle-value attempt-value
+                                                            cursor-field))]
+                        (string.format "%02d" accepted-value)))
+        new-input (replace-sub input-text field-start field-end new-value)]
+    (if (validate-input-date new-input)
+        (set input-text new-input))))
 
 (fn change-field-value-handler [by]
   (fn []
