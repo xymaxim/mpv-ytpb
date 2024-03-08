@@ -77,7 +77,7 @@
       (where x (< x field-start)) (shift-field -1)
       _ (set cursor-position new-position))))
 
-(fn make-shift-field-handler [direction]
+(fn shift-field-handler [direction]
   (fn []
     (shift-field direction)
     (show)))
@@ -104,8 +104,8 @@
   (let [date (input-text:gsub date-pattern submit-date-pattern)]
     (submit-callback date)))
 
-(local key-handlers {:LEFT (make-shift-field-handler -1)
-                     :RIGHT (make-shift-field-handler 1)
+(local key-handlers {:LEFT (shift-field-handler -1)
+                     :RIGHT (shift-field-handler 1)
                      :UP (change-field-value-handler 1)
                      :DOWN (change-field-value-handler -1)
                      :ENTER submit-handler})
