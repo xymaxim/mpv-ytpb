@@ -8,36 +8,65 @@ package.preload["picker"] = package.preload["picker"] or function(...)
   local mp = require("mp")
   local input_prompt = nil
   local input_text = nil
-  local cursor_position = 1
-  local cursor_field = 5
+  local cursor_position = nil
+  local selected_field = "HH"
   local timer = nil
   local date_pattern = "(%d%d%d%d)-(%d%d)-(%d%d) (%d%d):(%d%d):(%d%d) ([+-]%d%d)"
   local submit_date_pattern = "%1%2%3T%4%5%6%7"
-  local fields = {{1, 2}, {3, 4}, {6, 7}, {9, 10}, {12, 13}, {15, 16}, {18, 19}, {21, 21}, {22, 24}}
+  local fields = {["yy**"] = {1, 2}, ["**yy"] = {3, 4}, mm = {6, 7}, dd = {9, 10}, HH = {12, 13}, MM = {15, 16}, SS = {18, 19}, ["+/-"] = {21, 21}, zz = {22, 24}}
+  local function cycle_iter(items, _3fstart)
+    local position = (_3fstart or 1)
+    local size = #items
+    local function _1_(direction)
+      position = (direction + position)
+      local function _2_()
+        local x = position
+        return (size < position)
+      end
+      if ((nil ~= position) and _2_()) then
+        local x = position
+        position = 1
+      else
+        local function _3_()
+          local x = position
+          return (position < 1)
+        end
+        if ((nil ~= position) and _3_()) then
+          local x = position
+          position = size
+        else
+        end
+      end
+      return items[position]
+    end
+    return _1_
+  end
+  local fields_order = {"yy**", "**yy", "mm", "dd", "HH", "MM", "SS", "+/-", "zz"}
+  local fields_iter = cycle_iter(fields_order, 5)
   local date_constraints
-  local function _1_(_241)
+  local function _5_(_241)
     return ((0 ~= _241) and (_241 <= 12))
   end
-  local function _2_(_241)
+  local function _6_(_241)
     return ((0 ~= _241) and (_241 <= 31))
   end
-  local function _3_(_241)
+  local function _7_(_241)
     return (_241 <= 24)
   end
-  local function _4_(_241)
+  local function _8_(_241)
     return (_241 <= 59)
   end
-  local function _5_(_241)
+  local function _9_(_241)
     return (_241 <= 59)
   end
-  date_constraints = {m = _1_, d = _2_, H = _3_, M = _4_, S = _5_}
-  local function _6_()
-    local function _7_(_)
+  date_constraints = {m = _5_, d = _6_, H = _7_, M = _8_, S = _9_}
+  local function _10_()
+    local function _11_(_)
       return true
     end
-    return _7_
+    return _11_
   end
-  setmetatable(date_constraints, {__index = _6_})
+  setmetatable(date_constraints, {__index = _10_})
   local ass_begin = mp.get_property("osd-ass-cc/0")
   local ass_end = mp.get_property("osd-ass-cc/1")
   local function validate_input_date(date)
@@ -45,14 +74,14 @@ package.preload["picker"] = package.preload["picker"] or function(...)
     do
       local matches = {string.match(date, date_pattern)}
       if (nil ~= next(matches)) then
-        local _let_8_ = matches
-        local y = _let_8_[1]
-        local m = _let_8_[2]
-        local d = _let_8_[3]
-        local H = _let_8_[4]
-        local M = _let_8_[5]
-        local S = _let_8_[6]
-        local z = _let_8_[7]
+        local _let_12_ = matches
+        local y = _let_12_[1]
+        local m = _let_12_[2]
+        local d = _let_12_[3]
+        local H = _let_12_[4]
+        local M = _let_12_[5]
+        local S = _let_12_[6]
+        local z = _let_12_[7]
         local terms = {y = y, m = m, d = d, H = H, M = M, S = S, z = z}
         for key, value in pairs(terms) do
           if (ok_3f == false) then break end
@@ -71,9 +100,9 @@ package.preload["picker"] = package.preload["picker"] or function(...)
     return string.format("%s%s%s", str:sub(1, (start - 1)), replace, str:sub((_end + 1)))
   end
   local function show()
-    local _let_10_ = fields[cursor_field]
-    local field_start = _let_10_[1]
-    local field_end = _let_10_[2]
+    local _let_14_ = fields[selected_field]
+    local field_start = _let_14_[1]
+    local field_end = _let_14_[2]
     local under_cursor = input_text:sub(field_start, field_end)
     local under_cursor_hl = string.format("{\\b1}%s{\\b0}", under_cursor)
     local input = replace_sub(input_text, field_start, field_end, under_cursor_hl)
@@ -89,45 +118,28 @@ package.preload["picker"] = package.preload["picker"] or function(...)
     end
   end
   local function shift_field(direction)
-    do
-      local new_position = (cursor_field + direction)
-      if (new_position == 0) then
-        cursor_field = #fields
-      else
-        local function _12_()
-          local x = new_position
-          return (x == (1 + #fields))
-        end
-        if ((nil ~= new_position) and _12_()) then
-          local x = new_position
-          cursor_field = 1
-        else
-          local _ = new_position
-          cursor_field = new_position
-        end
-      end
-    end
-    cursor_position = fields[cursor_field][1]
+    selected_field = fields_iter(direction)
+    cursor_position = fields[selected_field][1]
     return nil
   end
   local function shift_cursor(direction)
-    local _let_14_ = fields[cursor_field]
-    local field_start = _let_14_[1]
-    local field_end = _let_14_[2]
+    local _let_16_ = fields[selected_field]
+    local field_start = _let_16_[1]
+    local field_end = _let_16_[2]
     local new_position = (cursor_position + direction)
-    local function _15_()
+    local function _17_()
       local x = new_position
       return (field_end < x)
     end
-    if ((nil ~= new_position) and _15_()) then
+    if ((nil ~= new_position) and _17_()) then
       local x = new_position
       return shift_field(1)
     else
-      local function _16_()
+      local function _18_()
         local x = new_position
         return (x < field_start)
       end
-      if ((nil ~= new_position) and _16_()) then
+      if ((nil ~= new_position) and _18_()) then
         local x = new_position
         return shift_field(-1)
       else
@@ -138,27 +150,27 @@ package.preload["picker"] = package.preload["picker"] or function(...)
     end
   end
   local function shift_field_handler(direction)
-    local function _18_()
+    local function _20_()
       shift_field(direction)
       return show()
     end
-    return _18_
+    return _20_
   end
   local function change_field_value(by)
     local function limit_value(value, min, max)
-      local function _19_()
+      local function _21_()
         local x = value
         return (x < min)
       end
-      if ((nil ~= value) and _19_()) then
+      if ((nil ~= value) and _21_()) then
         local x = value
         return min
       else
-        local function _20_()
+        local function _22_()
           local x = value
           return (x > max)
         end
-        if ((nil ~= value) and _20_()) then
+        if ((nil ~= value) and _22_()) then
           local x = value
           return max
         else
@@ -169,19 +181,19 @@ package.preload["picker"] = package.preload["picker"] or function(...)
     end
     local function cycle_value(value, field)
       local function cycle_within(x, min, max)
-        local function _22_()
+        local function _24_()
           local x0 = x
           return (x0 < min)
         end
-        if ((nil ~= x) and _22_()) then
+        if ((nil ~= x) and _24_()) then
           local x0 = x
           return max
         else
-          local function _23_()
+          local function _25_()
             local x0 = x
             return (x0 > max)
           end
-          if ((nil ~= x) and _23_()) then
+          if ((nil ~= x) and _25_()) then
             local x0 = x
             return min
           else
@@ -190,38 +202,38 @@ package.preload["picker"] = package.preload["picker"] or function(...)
           end
         end
       end
-      if (field == 3) then
+      if (field == "mm") then
         return cycle_within(value, 1, 12)
-      elseif (field == 4) then
+      elseif (field == "dd") then
         return cycle_within(value, 1, 31)
-      elseif (field == 5) then
+      elseif (field == "HH") then
         return cycle_within(value, 0, 23)
-      elseif ((field == 6) or (field == 7)) then
+      elseif ((field == "MM") or (field == "SS")) then
         return cycle_within(value, 0, 59)
       else
         local _ = field
         return value
       end
     end
-    local _let_26_ = fields[cursor_field]
-    local field_start = _let_26_[1]
-    local field_end = _let_26_[2]
+    local _let_28_ = fields[selected_field]
+    local field_start = _let_28_[1]
+    local field_end = _let_28_[2]
     local field_value = input_text:sub(field_start, field_end)
     local new_value
-    if (cursor_field == 8) then
+    if (selected_field == "+/-") then
       if ("+" == field_value) then
         new_value = "-"
       else
         new_value = "+"
       end
     else
-      local _ = cursor_field
+      local _ = selected_field
       local attempt_value = (by + tonumber(field_value))
       local accepted_value
-      if ((cursor_field == 1) or (cursor_field == 2)) then
+      if ((selected_field == "yy**") or (selected_field == "**yy")) then
         accepted_value = limit_value(attempt_value, 0, 99)
       else
-        accepted_value = cycle_value(attempt_value, cursor_field)
+        accepted_value = cycle_value(attempt_value, selected_field)
       end
       new_value = string.format("%02d", accepted_value)
     end
@@ -234,11 +246,11 @@ package.preload["picker"] = package.preload["picker"] or function(...)
     end
   end
   local function change_field_value_handler(by)
-    local function _31_()
+    local function _33_()
       change_field_value(by)
       return show()
     end
-    return _31_
+    return _33_
   end
   local submit_callback = nil
   local function submit_handler()
@@ -248,14 +260,14 @@ package.preload["picker"] = package.preload["picker"] or function(...)
   local key_handlers = {LEFT = shift_field_handler(-1), RIGHT = shift_field_handler(1), UP = change_field_value_handler(1), DOWN = change_field_value_handler(-1), ENTER = submit_handler}
   local input_symbols = {"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "+", "-"}
   for _, symbol in ipairs(input_symbols) do
-    local function _32_()
+    local function _34_()
       if input_symbol(symbol) then
         shift_cursor(1)
       else
       end
       return show()
     end
-    key_handlers[symbol] = _32_
+    key_handlers[symbol] = _34_
   end
   local function enable_key_bindings()
     for key, handler in pairs(key_handlers) do
@@ -362,23 +374,23 @@ local function parse_mpd_start_time(content)
     local year, month, day, hour, min, sec, ms = string.match(value, pattern)
     local sec0 = (sec + offset)
     local ms0 = tonumber(ms)
-    local function _38_()
+    local function _40_()
       if ms0 then
         return (ms0 / 1000)
       else
         return 0
       end
     end
-    return (os.time({year = year, month = month, day = day, hour = hour, min = min, sec = sec0}) + _38_())
+    return (os.time({year = year, month = month, day = day, hour = hour, min = min, sec = sec0}) + _40_())
   end
   local _, _0, start_time_str = content:find("availabilityStartTime=\"([^\"]+)\"")
   return isodate__3etimestamp(start_time_str)
 end
 local function update_current_mpd()
   state["current-mpd-path"] = mp.get_property("path")
-  local _39_ = io.open(state["current-mpd-path"])
-  if (nil ~= _39_) then
-    local f = _39_
+  local _41_ = io.open(state["current-mpd-path"])
+  if (nil ~= _41_) then
+    local f = _41_
     state["current-start-time"] = parse_mpd_start_time(f:read("*all"))
     return f:close()
   else
@@ -391,11 +403,11 @@ local function seek_offset__3eseconds(value)
     local pattern = "(%d+%.?%d*)(%a*)"
     local symbols = {d = 86400, h = 3600, m = 60, s = 1}
     for number, symbol in string.gmatch(value, pattern) do
-      local function _41_()
+      local function _43_()
         local x = symbol
         return symbols[x]
       end
-      if ((nil ~= symbol) and _41_()) then
+      if ((nil ~= symbol) and _43_()) then
         local x = symbol
         total_seconds = (total_seconds + (number * symbols[x]))
       elseif (symbol == "") then
@@ -413,14 +425,14 @@ local function format_clock_time_string(timestamp)
   local hours = math.floor((settings["utc-offset"] / 3600))
   local minutes = math.floor(((settings["utc-offset"] % 3600) / 60))
   local hh_part = string.format("%+03d", hours)
-  local function _43_()
+  local function _45_()
     if (0 > minutes) then
       return string.format(":%02d", minutes)
     else
       return ""
     end
   end
-  return (string.format("%s %s", date_time_part, hh_part) .. _43_())
+  return (string.format("%s %s", date_time_part, hh_part) .. _45_())
 end
 local function draw_clock()
   local time_pos = mp.get_property_native("time-pos", 0)
@@ -487,16 +499,16 @@ local function mark_new_point()
   do
     local time_pos = mp.get_property_native("time-pos")
     local new_point = Point:new(time_pos, state["current-start-time"], state["current-mpd-path"])
-    local _48_ = state["marked-points"]
-    if (((_G.type(_48_) == "table") and (_48_[1] == nil)) or ((_G.type(_48_) == "table") and (nil ~= _48_[1]) and (nil ~= _48_[2]))) then
+    local _50_ = state["marked-points"]
+    if (((_G.type(_50_) == "table") and (_50_[1] == nil)) or ((_G.type(_50_) == "table") and (nil ~= _50_[1]) and (nil ~= _50_[2]))) then
       state["marked-points"][1] = new_point
       state["current-mark"] = 1
       if state["marked-points"][2] then
         state["marked-points"][2] = nil
       else
       end
-    elseif ((_G.type(_48_) == "table") and (nil ~= _48_[1]) and (_48_[2] == nil)) then
-      local a = _48_[1]
+    elseif ((_G.type(_50_) == "table") and (nil ~= _50_[1]) and (_50_[2] == nil)) then
+      local a = _50_[1]
       if (new_point.timestamp >= a.timestamp) then
         state["marked-points"][2] = new_point
         state["current-mark"] = 2
@@ -519,9 +531,9 @@ local function edit_current_point()
       local new_point = Point:new(time_pos, state["current-start-time"], state["current-mpd-path"])
       local time_string = new_point:format(settings["utc-offset"])
       do end (state["marked-points"])[state["current-mark"]] = new_point
-      local _let_52_ = state["marked-points"]
-      local a = _let_52_[1]
-      local b = _let_52_[2]
+      local _let_54_ = state["marked-points"]
+      local a = _let_54_[1]
+      local b = _let_54_[2]
       if (b and (a.timestamp > b.timestamp)) then
         state["marked-points"] = {b, a}
         if (new_point.timestamp == b.timestamp) then
@@ -588,12 +600,12 @@ end
 local function go_to_point(index)
   local point
   do
-    local t_60_ = state["marked-points"]
-    if (nil ~= t_60_) then
-      t_60_ = t_60_[index]
+    local t_62_ = state["marked-points"]
+    if (nil ~= t_62_) then
+      t_62_ = t_62_[index]
     else
     end
-    point = t_60_
+    point = t_62_
   end
   if point then
     state["current-mark"] = index
@@ -634,16 +646,16 @@ local function render_column(column)
     do
       local key_dividers_num = (#key.binds - 1)
       local total_label_length
-      local function _66_()
+      local function _68_()
         local total = 0
-        for _0, _67_ in ipairs(key.binds) do
-          local _each_68_ = _67_
-          local key_label = _each_68_[1]
+        for _0, _69_ in ipairs(key.binds) do
+          local _each_70_ = _69_
+          local key_label = _each_70_[1]
           total = (total + #key_label)
         end
         return total
       end
-      total_label_length = (key_dividers_num + _66_())
+      total_label_length = (key_dividers_num + _68_())
       if (max_label_length < total_label_length) then
         max_label_length = total_label_length
       else
@@ -661,13 +673,13 @@ local function render_column(column)
   table.insert(rendered_lines, string.format("%s %s%s%s", ass_fs(theme["main-menu-font-size"], ass_b(column.header)), ass_fs(key_font_size, ass_b(string.rep(" ", max_label_length))), ass_fs(theme["main-menu-font-size"], ""), fill_rest_with(" ", column.header, (max_desc_length + right_margin))))
   for _, key in ipairs(column.keys) do
     local label
-    local _71_
+    local _73_
     do
       local tbl_18_auto = {}
       local i_19_auto = 0
-      for _0, _72_ in ipairs(key.binds) do
-        local _each_73_ = _72_
-        local key_label = _each_73_[1]
+      for _0, _74_ in ipairs(key.binds) do
+        local _each_75_ = _74_
+        local key_label = _each_75_[1]
         local val_20_auto = key_label
         if (nil ~= val_20_auto) then
           i_19_auto = (i_19_auto + 1)
@@ -675,9 +687,9 @@ local function render_column(column)
         else
         end
       end
-      _71_ = tbl_18_auto
+      _73_ = tbl_18_auto
     end
-    label = table.concat(_71_, "/")
+    label = table.concat(_73_, "/")
     local aligned_label = (fill_rest_with("\\h", label, max_label_length) .. label)
     table.insert(rendered_lines, string.format("%s%s%s", ass_fs(key_font_size, ass_b(aligned_label)), ass_fs(theme["main-menu-font-size"], (" " .. key.desc)), fill_rest_with(" ", key.desc, (max_desc_length + right_margin))))
   end
@@ -704,7 +716,7 @@ local function stack_columns(...)
   local lines = {}
   do
     local max_column_size
-    local function _77_(...)
+    local function _79_(...)
       local tbl_18_auto = {}
       local i_19_auto = 0
       for _, column in ipairs({...}) do
@@ -717,7 +729,7 @@ local function stack_columns(...)
       end
       return tbl_18_auto
     end
-    max_column_size = math.max(table.unpack(_77_(...)))
+    max_column_size = math.max(table.unpack(_79_(...)))
     for i = 1, max_column_size do
       local line = ""
       for _, column in pairs({...}) do
@@ -729,16 +741,16 @@ local function stack_columns(...)
   return lines
 end
 local main_menu_map = nil
-local function _79_()
+local function _81_()
   local ass_tags = ass("\\an4\\fnmonospace\\bord2", ass_c_2a(theme["main-menu-color"]))
   do
-    local _let_80_ = main_menu_map
-    local rewind_col = _let_80_[1]
-    local mark_mode_col = _let_80_[2]
-    local other_col = _let_80_[3]
+    local _let_82_ = main_menu_map
+    local rewind_col = _let_82_[1]
+    local mark_mode_col = _let_82_[2]
+    local other_col = _let_82_[3]
     local rendered_columns = {render_column(rewind_col), post_render_mark_column(render_column(mark_mode_col)), render_column(other_col)}
     local stacked_columns = stack_columns(table.unpack(rendered_columns))
-    local _81_
+    local _83_
     do
       local tbl_18_auto = {}
       local i_19_auto = 0
@@ -750,18 +762,18 @@ local function _79_()
         else
         end
       end
-      _81_ = tbl_18_auto
+      _83_ = tbl_18_auto
     end
-    state["main-overlay"].data = table.concat(_81_, "\\N")
+    state["main-overlay"].data = table.concat(_83_, "\\N")
   end
   return (state["main-overlay"]):update()
 end
-display_main_overlay = _79_
+display_main_overlay = _81_
 local function rewind_key_handler()
   mp.set_property_native("pause", true)
   local time_pos = mp.get_property_native("time-pos", 0)
   local time_string = format_clock_time_string((time_pos + state["current-start-time"]))
-  local function _83_(date)
+  local function _85_(date)
     local function callback(mpd_path, time_pos0)
       mp.unregister_script_message("yp:rewind-completed")
       return register_seek_after_restart(time_pos0)
@@ -769,7 +781,7 @@ local function rewind_key_handler()
     picker.terminate()
     return request_rewind(date, callback)
   end
-  return picker.get({prompt = "> Rewind to:\n", default = string.gsub(time_string, "\226\128\147", "-"), ["cursor-pos"] = 12, submit = _83_})
+  return picker.get({prompt = "> Rewind to:\n", default = string.gsub(time_string, "\226\128\147", "-"), ["cursor-pos"] = 12, submit = _85_})
 end
 local function seek_backward_key_handler()
   mp.osd_message("Seeking backward...", 999)
@@ -821,7 +833,7 @@ local function toggle_clock_key_handler()
   end
 end
 local function change_timezone_key_handler()
-  local function _87_(value)
+  local function _89_(value)
     do
       local hours = 3600
       settings["utc-offset"] = ((tonumber(value) or 0) * hours)
@@ -833,7 +845,7 @@ local function change_timezone_key_handler()
     end
     return input.terminate()
   end
-  return input.get({prompt = "New timezone offset: UTC", default_text = "+00", cursor_position = 2, submit = _87_})
+  return input.get({prompt = "New timezone offset: UTC", default_text = "+00", cursor_position = 2, submit = _89_})
 end
 local key_binding_names = {}
 local function deactivate()
@@ -853,11 +865,11 @@ local function register_keys(menu_map)
   local added_key_bindings = {}
   for _, column in ipairs(main_menu_map) do
     for _0, item in ipairs(column.keys) do
-      for _1, _90_ in ipairs(item.binds) do
-        local _each_91_ = _90_
-        local key = _each_91_[1]
-        local name = _each_91_[2]
-        local func = _each_91_[3]
+      for _1, _92_ in ipairs(item.binds) do
+        local _each_93_ = _92_
+        local key = _each_93_[1]
+        local name = _each_93_[2]
+        local func = _each_93_[3]
         mp.add_forced_key_binding(key, name, func)
         table.insert(added_key_bindings, name)
       end
@@ -870,13 +882,13 @@ local function define_main_menu_map()
     local bindings = {...}
     return {desc = description, binds = bindings}
   end
-  local function _92_()
+  local function _94_()
     return go_to_point(1)
   end
-  local function _93_()
+  local function _95_()
     return go_to_point(2)
   end
-  return {{header = "Rewind and seek", keys = {define_key_line("rewind", {"r", "rewind", rewind_key_handler}), define_key_line("seek backward/forward", {"<", "seek-backward", seek_backward_key_handler}, {">", "seek-forward", seek_forward_key_handler}), define_key_line("change seek offset", {"F", "change-seek-offset", change_seek_offset_key_handler})}}, {header = "Mark mode", keys = {define_key_line("mark new point", {"m", "mark-point", mark_new_point}), define_key_line("edit point", {"e", "edit-point", edit_current_point}), define_key_line("go to point A/B", {"a", "go-to-point-A", _92_}, {"b", "go-to-point-B", _93_})}}, {header = "Other", keys = {define_key_line("take screenshot", {"s", "take-screenshot", take_screenshot_key_handler}), define_key_line("toggle clock", {"C", "toggle-clock", toggle_clock_key_handler}), define_key_line("change timezone", {"T", "change-timezone", change_timezone_key_handler}), define_key_line("quit", {"q", "quit", deactivate})}}}
+  return {{header = "Rewind and seek", keys = {define_key_line("rewind", {"r", "rewind", rewind_key_handler}), define_key_line("seek backward/forward", {"<", "seek-backward", seek_backward_key_handler}, {">", "seek-forward", seek_forward_key_handler}), define_key_line("change seek offset", {"F", "change-seek-offset", change_seek_offset_key_handler})}}, {header = "Mark mode", keys = {define_key_line("mark new point", {"m", "mark-point", mark_new_point}), define_key_line("edit point", {"e", "edit-point", edit_current_point}), define_key_line("go to point A/B", {"a", "go-to-point-A", _94_}, {"b", "go-to-point-B", _95_})}}, {header = "Other", keys = {define_key_line("take screenshot", {"s", "take-screenshot", take_screenshot_key_handler}), define_key_line("toggle clock", {"C", "toggle-clock", toggle_clock_key_handler}), define_key_line("change timezone", {"T", "change-timezone", change_timezone_key_handler}), define_key_line("quit", {"q", "quit", deactivate})}}}
 end
 local function activate()
   state["activated?"] = true
@@ -890,14 +902,14 @@ local function activate()
     return nil
   end
 end
-local function _95_()
+local function _97_()
   if not state["activated?"] then
     return activate()
   else
     return deactivate()
   end
 end
-mp.add_forced_key_binding("Ctrl+p", "activate", _95_)
+mp.add_forced_key_binding("Ctrl+p", "activate", _97_)
 local function run_hook(ytpb_url)
   mp.set_property("stream-open-filename", "null://")
   mp.set_property("idle", "yes")
@@ -926,8 +938,8 @@ local function on_load_file()
   end
 end
 mp.add_hook("on_load", 50, on_load_file)
-local function _98_()
+local function _100_()
   do end (state["ytpb-mpv-handle"]):close()
   return os.remove(state["socket-path"])
 end
-return mp.register_event("shutdown", _98_)
+return mp.register_event("shutdown", _100_)

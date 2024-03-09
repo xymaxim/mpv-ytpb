@@ -2,8 +2,8 @@
 
 (var input-prompt nil)
 (var input-text nil)
-(var cursor-position 1)
-(var cursor-field 5)
+(var cursor-position nil)
+(var selected-field :HH)
 
 (var timer nil)
 
@@ -11,15 +11,28 @@
 (local submit-date-pattern "%1%2%3T%4%5%6%7")
 
 ;; yyyy-mm-dd HH:MM:SS"+/-"zz
-(local fields [[1 2]
-               [3 4]
-               [6 7]
-               [9 10]
-               [12 13]
-               [15 16]
-               [18 19]
-               [21 21]
-               [22 24]])
+(local fields {:yy** [1 2]
+               :**yy [3 4]
+               :mm [6 7]
+               :dd [9 10]
+               :HH [12 13]
+               :MM [15 16]
+               :SS [18 19]
+               :+/- [21 21]
+               :zz [22 24]})
+
+(fn cycle-iter [items ?start]
+  (var position (or ?start 1))
+  (local size (length items))
+  (lambda [direction]
+    (set position (+ direction position))
+    (case position
+      (where x (< size position)) (set position 1)
+      (where x (< position 1)) (set position size))
+    (. items position)))
+
+(local fields-order [:yy** :**yy :mm :dd :HH :MM :SS "+/-" :zz])
+(var fields-iter (cycle-iter fields-order 5))
 
 (local date-constraints {:m #(and (not= 0 $1) (<= $1 12))
                          :d #(and (not= 0 $1) (<= $1 31))
@@ -50,7 +63,7 @@
   (string.format "%s%s%s" (str:sub 1 (- start 1)) replace (str:sub (+ end 1))))
 
 (fn show []
-  (let [[field-start field-end] (. fields cursor-field)
+  (let [[field-start field-end] (. fields selected-field)
         under-cursor (input-text:sub field-start field-end)
         under-cursor-hl (string.format "{\\b1}%s{\\b0}" under-cursor)
         input (replace-sub input-text field-start field-end under-cursor-hl)]
@@ -63,15 +76,11 @@
       (set input-text new-input) true)))
 
 (fn shift-field [direction]
-  (let [new-position (+ cursor-field direction)]
-    (case new-position
-      0 (set cursor-field (length fields))
-      (where x (= x (+ 1 (length fields)))) (set cursor-field 1)
-      _ (set cursor-field new-position)))
-  (set cursor-position (. (. fields cursor-field) 1)))
+  (set selected-field (fields-iter direction))
+  (set cursor-position (. (. fields selected-field) 1)))
 
 (fn shift-cursor [direction]
-  (let [[field-start field-end] (. fields cursor-field)
+  (let [[field-start field-end] (. fields selected-field)
         new-position (+ cursor-position direction)]
     (case new-position
       (where x (< field-end x)) (shift-field 1)
@@ -98,22 +107,22 @@
         _ x))
 
     (case field
-      3 (cycle-within value 1 12)
-      4 (cycle-within value 1 31)
-      5 (cycle-within value 0 23)
-      (where (or 6 7)) (cycle-within value 0 59)
+      :mm (cycle-within value 1 12)
+      :dd (cycle-within value 1 31)
+      :HH (cycle-within value 0 23)
+      (where (or :MM :SS)) (cycle-within value 0 59)
       _ value))
 
-  (let [[field-start field-end] (. fields cursor-field)
+  (let [[field-start field-end] (. fields selected-field)
         field-value (input-text:sub field-start field-end)
-        new-value (case cursor-field
-                    8 (if (= "+" field-value) "-" "+")
+        new-value (case selected-field
+                    "+/-" (if (= "+" field-value) "-" "+")
                     _ (let [attempt-value (+ by (tonumber field-value))
-                            accepted-value (if (or (= cursor-field 1)
-                                                   (= cursor-field 2))
+                            accepted-value (if (or (= selected-field :yy**)
+                                                   (= selected-field :**yy))
                                                (limit-value attempt-value 0 99)
                                                (cycle-value attempt-value
-                                                            cursor-field))]
+                                                            selected-field))]
                         (string.format "%02d" accepted-value)))
         new-input (replace-sub input-text field-start field-end new-value)]
     (if (validate-input-date new-input)
