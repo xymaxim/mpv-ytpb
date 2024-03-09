@@ -39,8 +39,8 @@ the script [main menu](#key-bindings).
 ### Rewinding
 
 Rewinding to a moment in a stream is bound to `r` key. It opens the date and
-time picker with dynamically bound keys: to select (`LEFT`, `RIGHT`) and change
-(`UP`, `DOWN`) input parts.
+time picker with dynamically bound keys: select (`LEFT`, `RIGHT`) and change
+(`UP`, `DOWN`) input parts, close (`ESC`).
 
 ### Seeking
 
