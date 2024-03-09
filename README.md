@@ -7,9 +7,9 @@ player, and launches the
 listener to handle the rewind functionality. A set of script key bindings allows
 to play, mark, and export (TODO) past moments of live streams.
 
-![mpv-ytpb user interface](./images/mpv-ytpb-ui.png)
+![mpv-ytpb user interface](./images/mpv-ytpb-window.gif)
 
-*A sketch of the script user interface.*
+*A screenshot of the script user interface. https://www.youtube.com/live/aofZxPM0l58.*
 
 ## Install
 
