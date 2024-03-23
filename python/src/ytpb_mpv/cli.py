@@ -108,7 +108,7 @@ class Listener:
         self._mpv = MPV(start_mpv=False, ipc_socket=str(ipc_server))
         self._mpv.bind_event("client-message", self._client_message_handler)
 
-        self.rewind_map = TreeMap()
+        self.rewind_tree = TreeMap()
 
     def _client_message_handler(self, event: dict) -> None:
         logger.debug(event)
@@ -157,7 +157,7 @@ class Listener:
         some_base_url = next(iter(self._streams)).base_url
 
         target = target_date.timestamp()
-        if reference := self.rewind_map.closest(target):
+        if reference := self.rewind_tree.closest(target):
             reference_sequence = reference.value
         else:
             reference_sequence = None
@@ -174,7 +174,7 @@ class Listener:
         rewound_segment = self._playback.get_downloaded_segment(sequence, some_base_url)
         target_date_diff = target_date - rewound_segment.ingestion_start_date
 
-        self.rewind_map.insert(rewound_segment.metadata.ingestion_walltime, sequence)
+        self.rewind_tree.insert(rewound_segment.metadata.ingestion_walltime, sequence)
 
         self._mpd_path, self._mpd_start_time = self._compose_mpd(
             rewound_segment.metadata
@@ -195,12 +195,15 @@ class Listener:
         latest_sequence = request_reference_sequence(
             some_base_url, self._playback.session
         )
-        rewind_segment = self._playback.get_downloaded_segment(
+        latest_segment = self._playback.get_downloaded_segment(
             latest_sequence, some_base_url
+        )
+        self.rewind_tree.insert(
+            latest_segment.metadata.ingestion_walltime, latest_sequence
         )
 
         self._mpd_path, self._mpd_start_time = self._compose_mpd(
-            rewind_segment.metadata
+            latest_segment.metadata
         )
         self._mpv.command("loadfile", str(self._mpd_path))
 
