@@ -541,7 +541,9 @@ show the previously marked points."
 (fn on-load-file []
   (let [open-filename (mp.get_property :stream-open-filename "")]
     (if (= 1 (open-filename:find "ytpb://"))
-        (msg.info "ytpb URL detected, run hook" (run-hook open-filename)))))
+        (do
+          (msg.info "ytpb URL detected, run hook")
+          (run-hook open-filename)))))
 
 (mp.add_hook :on_load 50 on-load-file)
 

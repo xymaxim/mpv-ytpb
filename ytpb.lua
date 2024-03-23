@@ -18,6 +18,7 @@ package.preload["picker"] = package.preload["picker"] or function(...)
     local position = (_3fstart or 1)
     local size = #items
     local function _1_(direction)
+      _G.assert((nil ~= direction), "Missing argument direction on ./picker.fnl:27")
       position = (direction + position)
       local function _2_()
         local x = position
@@ -932,7 +933,8 @@ end
 local function on_load_file()
   local open_filename = mp.get_property("stream-open-filename", "")
   if (1 == open_filename:find("ytpb://")) then
-    return msg.info("ytpb URL detected, run hook", run_hook(open_filename))
+    msg.info("ytpb URL detected, run hook")
+    return run_hook(open_filename)
   else
     return nil
   end
