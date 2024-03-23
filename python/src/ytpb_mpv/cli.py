@@ -1,9 +1,11 @@
 import atexit
 import shutil
 from copy import deepcopy
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from tempfile import NamedTemporaryFile
+from typing import Self, TypeGuard
 from xml.etree import ElementTree
 
 import click
@@ -21,12 +23,77 @@ from ytpb.locate import SegmentLocator
 from ytpb.playback import Playback
 from ytpb.segment import SegmentMetadata
 from ytpb.streams import Streams
-from ytpb.types import SetOfStreams
+from ytpb.types import SegmentSequence, SetOfStreams, Timestamp
 from ytpb.utils.remote import request_reference_sequence
 
 logger = structlog.get_logger(__name__)
 
 YTPB_CLIENT_NAME = "yp"
+
+
+@dataclass
+class TreeNode:
+    key: Timestamp
+    value: SegmentSequence
+    left: Self | None = None
+    right: Self | None = None
+
+
+@dataclass
+class TreeMap:
+    """A binary search tree implementation to store key-value pairs.
+
+    Keys represent timestamps of segments, while values are sequence numbers.
+    """
+
+    root: TreeNode | None = None
+
+    @staticmethod
+    def _is_tree_node(node: TreeNode | None) -> TypeGuard[TreeNode]:
+        return node is not None
+
+    @staticmethod
+    def _insert(
+        node: TreeNode | None, key: Timestamp, value: SegmentSequence
+    ) -> TreeNode:
+        if not TreeMap._is_tree_node(node):
+            return TreeNode(key, value, None, None)
+        else:
+            if key < node.key:
+                left = TreeMap._insert(node.left, key, value)
+                return TreeNode(node.key, node.value, left, node.right)
+            elif key > node.key:
+                right = TreeMap._insert(node.right, key, value)
+                return TreeNode(node.key, node.value, node.left, right)
+            else:
+                return TreeNode(node.key, value, node.left, node.right)
+
+    def insert(self, key: Timestamp, value: SegmentSequence) -> None:
+        """Insert a pair of timestamp and sequence number into the tree."""
+        self.root = TreeMap._insert(self.root, key, value)
+
+    @staticmethod
+    def _closest(
+        node: TreeNode | None, target: Timestamp, closest: TreeNode
+    ) -> TreeNode | None:
+        if not TreeMap._is_tree_node(node):
+            return closest
+        else:
+            result = closest
+            if abs(target - closest.key) > abs(target - node.key):
+                result = node
+            if target < node.key:
+                return TreeMap._closest(node.left, target, result)
+            elif target > node.key:
+                return TreeMap._closest(node.right, target, result)
+            else:
+                return result
+
+    def closest(self, target: Timestamp) -> TreeNode | None:
+        """Find the node closest to the target timestamp."""
+        if self.root is None:
+            return None
+        return TreeMap._closest(self.root, target, self.root)
 
 
 class Listener:
@@ -39,8 +106,9 @@ class Listener:
         self._mpd_start_time: datetime | None = None
 
         self._mpv = MPV(start_mpv=False, ipc_socket=str(ipc_server))
-
         self._mpv.bind_event("client-message", self._client_message_handler)
+
+        self.rewind_map = TreeMap()
 
     def _client_message_handler(self, event: dict) -> None:
         logger.debug(event)
@@ -87,16 +155,26 @@ class Listener:
 
     def handle_rewind(self, target_date: datetime) -> None:
         some_base_url = next(iter(self._streams)).base_url
+
+        target = target_date.timestamp()
+        if reference := self.rewind_map.closest(target):
+            reference_sequence = reference.value
+        else:
+            reference_sequence = None
+
+        print("***", reference_sequence)
+
         sl = SegmentLocator(
             some_base_url,
+            reference_sequence=reference_sequence,
             temp_directory=self._playback.get_temp_directory(),
             session=self._playback.session,
         )
-
-        target = target_date.timestamp()
         sequence, falls_into_gap = sl.find_sequence_by_time(target)
         rewound_segment = self._playback.get_downloaded_segment(sequence, some_base_url)
         target_date_diff = target_date - rewound_segment.ingestion_start_date
+
+        self.rewind_map.insert(rewound_segment.metadata.ingestion_walltime, sequence)
 
         self._mpd_path, self._mpd_start_time = self._compose_mpd(
             rewound_segment.metadata
