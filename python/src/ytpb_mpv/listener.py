@@ -21,7 +21,7 @@ YTPB_CLIENT_NAME = "yp"
 
 
 @dataclass
-class TreeNode:
+class RewindTreeNode:
     key: Timestamp
     value: SegmentSequence
     left: Self | None = None
@@ -29,60 +29,60 @@ class TreeNode:
 
 
 @dataclass
-class TreeMap:
+class RewindTreeMap:
     """A binary search tree implementation to store key-value pairs.
 
     Keys represent timestamps of segments, while values are sequence numbers.
     """
 
-    root: TreeNode | None = None
+    root: RewindTreeNode | None = None
 
     @staticmethod
-    def _is_tree_node(node: TreeNode | None) -> TypeGuard[TreeNode]:
+    def _is_tree_node(node: RewindTreeNode | None) -> TypeGuard[RewindTreeNode]:
         return node is not None
 
     @staticmethod
     def _insert(
-        node: TreeNode | None, key: Timestamp, value: SegmentSequence
-    ) -> TreeNode:
-        if not TreeMap._is_tree_node(node):
-            return TreeNode(key, value, None, None)
+        node: RewindTreeNode | None, key: Timestamp, value: SegmentSequence
+    ) -> RewindTreeNode:
+        if not RewindTreeMap._is_tree_node(node):
+            return RewindTreeNode(key, value, None, None)
         else:
             if key < node.key:
-                left = TreeMap._insert(node.left, key, value)
-                return TreeNode(node.key, node.value, left, node.right)
+                left = RewindTreeMap._insert(node.left, key, value)
+                return RewindTreeNode(node.key, node.value, left, node.right)
             elif key > node.key:
-                right = TreeMap._insert(node.right, key, value)
-                return TreeNode(node.key, node.value, node.left, right)
+                right = RewindTreeMap._insert(node.right, key, value)
+                return RewindTreeNode(node.key, node.value, node.left, right)
             else:
-                return TreeNode(node.key, value, node.left, node.right)
+                return RewindTreeNode(node.key, value, node.left, node.right)
 
     def insert(self, key: Timestamp, value: SegmentSequence) -> None:
         """Insert a pair of timestamp and sequence number into the tree."""
-        self.root = TreeMap._insert(self.root, key, value)
+        self.root = RewindTreeMap._insert(self.root, key, value)
 
     @staticmethod
     def _closest(
-        node: TreeNode | None, target: Timestamp, closest: TreeNode
-    ) -> TreeNode | None:
-        if not TreeMap._is_tree_node(node):
+        node: RewindTreeNode | None, target: Timestamp, closest: RewindTreeNode
+    ) -> RewindTreeNode | None:
+        if not RewindTreeMap._is_tree_node(node):
             return closest
         else:
             result = closest
             if abs(target - closest.key) > abs(target - node.key):
                 result = node
             if target < node.key:
-                return TreeMap._closest(node.left, target, result)
+                return RewindTreeMap._closest(node.left, target, result)
             elif target > node.key:
-                return TreeMap._closest(node.right, target, result)
+                return RewindTreeMap._closest(node.right, target, result)
             else:
                 return result
 
-    def closest(self, target: Timestamp) -> TreeNode | None:
+    def closest(self, target: Timestamp) -> RewindTreeNode | None:
         """Find the node closest to the target timestamp."""
         if self.root is None:
             return None
-        return TreeMap._closest(self.root, target, self.root)
+        return RewindTreeMap._closest(self.root, target, self.root)
 
 
 class Listener:
@@ -97,7 +97,7 @@ class Listener:
         self._mpv = MPV(start_mpv=False, ipc_socket=str(ipc_server))
         self._mpv.bind_event("client-message", self._client_message_handler)
 
-        self.rewind_tree = TreeMap()
+        self.rewind_tree = RewindTreeMap()
 
     def _client_message_handler(self, event: dict) -> None:
         logger.debug(event)
