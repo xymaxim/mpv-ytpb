@@ -4,4 +4,5 @@
 
 ### Features
 
-- Keep the rewind history in memory to pick references from [#1](https://github.com/xymaxim/mpv-ytpb/pull/1)
+- Keep the rewind history in memory to pick references from
+  [#1](https://github.com/xymaxim/mpv-ytpb/pull/1)
