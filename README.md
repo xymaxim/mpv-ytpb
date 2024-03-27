@@ -13,19 +13,24 @@ to play, mark, and export (TODO) past moments of live streams.
 
 ## Install
 
-*mpv-ytpb* requires *[Ytpb](https://github.com/xymaxim/ytpb)* to be
+*mpv-ytpb* requires *[ytpb](https://github.com/xymaxim/ytpb)* to be
 installed in your `PATH`. Also, playing needs a custom mpv build with patched
 FFmpeg (see xymaxim/ytpb#4 for details).
 
-
 1. Build a custom mpv: follow
-   [this](https://github.com/xymaxim/ytpb/issues/4#issuecomment-1975844281)
-   instruction
+   [this](https://github.com/xymaxim/ytpb/issues/4#issuecomment-1975844281) compile
+   instruction or use [this](https://github.com/xymaxim/ytpb/issues/4#issuecomment-2012443084)
+   container image
 2. Install [ytpb](https://github.com/xymaxim/ytpb): ``$ pipx install ytpb``
 3. Install [ytpb-mpv](https://github.com/xymaxim/mpv-ytpb/tree/main/python): ``$
    pipx inject ytpb ytpb-mpv --include-apps``
 4. Copy `ytpb.lua` to your mpv `~~/scripts`
    [directory](https://mpv.io/manual/master/#files)
+
+To update to the newer version of the script, do:
+
+1. Replace `ytpb.lua` with the new one
+2. Update the installed packages: `$ pipx update --include-injected ytpb`
 
 ## Usage
 
