@@ -13,7 +13,7 @@ to play, mark, and export (TODO) past moments of live streams.
 
 ## Install
 
-*mpv-ytpb* requires *[ytpb](https://github.com/xymaxim/ytpb)* to be
+*mpv-ytpb* requires [ytpb](https://github.com/xymaxim/ytpb) to be
 installed in your `PATH`. Also, playing needs a custom mpv build with patched
 FFmpeg (see xymaxim/ytpb#4 for details).
 
