@@ -157,11 +157,14 @@ class Listener:
             temp_directory=self._playback.get_temp_directory(),
             session=self._playback.session,
         )
-        sequence, falls_into_gap = sl.find_sequence_by_time(target)
-        rewound_segment = self._playback.get_downloaded_segment(sequence, some_base_url)
-        target_date_diff = target_date - rewound_segment.ingestion_start_date
+        locate_result = sl.find_sequence_by_time(target)
+        rewound_segment = self._playback.get_downloaded_segment(
+            locate_result.sequence, some_base_url
+        )
 
-        self.rewind_tree.insert(rewound_segment.metadata.ingestion_walltime, sequence)
+        self.rewind_tree.insert(
+            rewound_segment.metadata.ingestion_walltime, locate_result.sequence
+        )
 
         self._mpd_path, self._mpd_start_time = self._compose_mpd(
             rewound_segment.metadata
@@ -173,7 +176,7 @@ class Listener:
             "script-message",
             "yp:rewind-completed",
             str(self._mpd_path),
-            str(target_date_diff.total_seconds()),
+            str(locate_result.time_difference),
         )
 
     def start(self) -> None:
