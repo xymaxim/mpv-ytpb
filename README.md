@@ -3,7 +3,7 @@
 *mpv-ytpb* is an mpv hook to play and rewind YouTube live streams
 interactively. The script detects `ytpb://<STREAM>` links passed to the mpv
 player, and launches the
-*[ytpb-mpv](https://github.com/xymaxim/mpv-ytpb/tree/main/python)* socket
+[ytpb-mpv](https://github.com/xymaxim/mpv-ytpb/tree/main/python) socket
 listener to handle the rewind functionality. A set of script key bindings allows
 to play, mark, and export (TODO) past moments of live streams.
 
@@ -18,8 +18,9 @@ installed in your `PATH`. Also, playing needs a custom mpv build with patched
 FFmpeg (see xymaxim/ytpb#4 for details).
 
 1. Build a custom mpv: follow
-   [this](https://github.com/xymaxim/ytpb/issues/4#issuecomment-1975844281) compile
-   instruction or use [this](https://github.com/xymaxim/ytpb/issues/4#issuecomment-2012443084)
+   [this](https://github.com/xymaxim/ytpb/issues/4#issuecomment-1975844281)
+   compile instruction or
+   [use](https://github.com/xymaxim/ytpb/issues/4#issuecomment-2012443084) this
    container image
 2. Install [ytpb](https://github.com/xymaxim/ytpb): ``$ pipx install ytpb``
 3. Install [ytpb-mpv](https://github.com/xymaxim/mpv-ytpb/tree/main/python): ``$
