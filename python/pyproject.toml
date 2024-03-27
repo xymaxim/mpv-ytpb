@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 name = "ytpb-mpv"
 description = "A socket listener to complement mpv-ytpb"
 readme = "README.md"
-version = "2024.3.4"
+version = "2024.3.27"
 authors = [ { name = "Maxim Stolyarchuk" } ]
 keywords = [ "mpv", "youtube" ]
 classifiers = [
