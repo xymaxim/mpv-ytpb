@@ -1,18 +1,15 @@
-from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from tempfile import NamedTemporaryFile
-from typing import Self, TypeGuard
 from xml.etree import ElementTree
 
 import structlog
 from python_mpv_jsonipc import MPV
 
 from ytpb.actions.compose import compose_dynamic_mpd
-from ytpb.locate import SegmentLocator
 from ytpb.playback import Playback
 from ytpb.segment import SegmentMetadata
-from ytpb.types import SegmentSequence, SetOfStreams, Timestamp
+from ytpb.types import SetOfStreams
 from ytpb.utils.remote import request_reference_sequence
 
 logger = structlog.get_logger(__name__)
