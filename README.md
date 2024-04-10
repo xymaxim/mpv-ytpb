@@ -3,9 +3,9 @@
 *mpv-ytpb* is an mpv hook to play and rewind YouTube live streams
 interactively. The script detects `ytpb://<STREAM>` links passed to the mpv
 player, and launches the
-[ytpb-mpv](https://github.com/xymaxim/mpv-ytpb/tree/main/python) socket
-listener to handle the rewind functionality. A set of script key bindings allows
-to play, mark, and export (TODO) past moments of live streams.
+[ytpb-mpv](https://github.com/xymaxim/mpv-ytpb/tree/main/python) socket listener
+to handle the rewind functionality. A set of script key bindings allows to play,
+mark, and export (TODO) past moments of live streams.
 
 ![mpv-ytpb user interface](./images/mpv-ytpb-window.gif)
 
@@ -37,7 +37,7 @@ To update to the newer version of the script, do:
 
     $ mpv ytpb://<STREAM>,
 
-where `<STREAM>` is a YouTube video URL or ID.
+where `<STREAM>` is the YouTube video URL or ID of a live stream.
 
 It will open a player with a stream playing and bind `Ctrl+p` key to activate
 the script [main menu](#key-bindings).
