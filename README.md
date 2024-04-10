@@ -67,6 +67,12 @@ The format of the input offset value (after `F` pressed) is
 `[<days>d][<hours>h][<minutes>m][<seconds>s]`, where each part is optional, but
 order must be preserved. For example: `1h`, `1h30m`, `120m`.
 
+### Taking screenshots
+
+Taking screenshots is bound to `s` key. The captured screenshot is saved in the
+current directory to a file named `<STREAM-ID>-<DATE>-<TIME>.jpg`, where times
+are in UTC.
+
 ### Mark mode
 
 Mark mode can be enabled by marking a point with `m` key. Points are labeled A
