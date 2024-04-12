@@ -55,7 +55,7 @@ class Listener:
             self._playback, rewind_segment_metadata, self._streams
         )
         with NamedTemporaryFile(
-            "w",
+            mode="w",
             prefix="ytpb-",
             suffix=".mpd",
             dir=self._playback.get_temp_directory(),
@@ -75,7 +75,7 @@ class Listener:
     def handle_rewind(self, target_date: datetime) -> None:
         moment = self._playback.locate_moment(target_date)
         rewound_segment = self._playback.get_segment(
-            moment.sequence, next(iter(self._streams)).base_url
+            moment.sequence, next(iter(self._streams))
         )
         self._mpd_path, self._mpd_start_time = self._compose_mpd(
             rewound_segment.metadata
@@ -91,12 +91,12 @@ class Listener:
         )
 
     def start(self) -> None:
-        some_base_url = next(iter(self._streams)).base_url
+        some_stream = next(iter(self._streams))
 
         latest_sequence = request_reference_sequence(
-            some_base_url, self._playback.session
+            some_stream.base_url, self._playback.session
         )
-        latest_segment = self._playback.get_segment(latest_sequence, some_base_url)
+        latest_segment = self._playback.get_segment(latest_sequence, some_stream)
         self._playback.rewind_history.insert(
             latest_segment.metadata.ingestion_walltime, latest_sequence
         )
