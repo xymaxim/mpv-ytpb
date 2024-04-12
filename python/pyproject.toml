@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 name = "ytpb-mpv"
 description = "A socket listener to complement mpv-ytpb"
 readme = "README.md"
-version = "2024.3.27"
+version = "2024.4.12"
 authors = [ { name = "Maxim Stolyarchuk" } ]
 keywords = [ "mpv", "youtube" ]
 classifiers = [
@@ -19,7 +19,7 @@ classifiers = [
 license = { file = "LICENSE" }
 requires-python = ">=3.11"
 dependencies = [
-    "ytpb>=2024.3.27",
+    "ytpb>=2024.4.12",
     "python-mpv-jsonipc>=1.2.0",
 ]
 
