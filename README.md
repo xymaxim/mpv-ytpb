@@ -31,7 +31,7 @@ FFmpeg (see xymaxim/ytpb#4 for details).
 To update to the newer version of the script, do:
 
 1. Replace `ytpb.lua` with the new one
-2. Update the installed packages: `$ pipx update --include-injected ytpb`
+2. Upgrade the installed packages: `$ pipx upgrade --include-injected ytpb`
 
 ## Usage
 
