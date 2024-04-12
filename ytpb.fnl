@@ -13,7 +13,7 @@
               :clock-color :ffffff
               :clock-font-size 32})
 
-(local state {:current-stream-id nil
+(local state {:stream-id nil
               :current-mpd-path nil
               :current-start-time nil
               :activated? false
@@ -430,7 +430,7 @@
   (let [cur-time-pos (mp.get_property_native :time-pos)
         cur-timestamp (+ state.current-start-time cur-time-pos)
         date-time-part (os.date "!%Y%m%d-%H%M%S" cur-timestamp)
-        path (string.format "%s-%s.jpg" state.current-stream-id date-time-part)]
+        path (string.format "%s-%s.jpg" state.stream-id date-time-part)]
     (mp.commandv :osd-msg :screenshot-to-file path)))
 
 (fn toggle-clock-key-handler []
@@ -538,7 +538,7 @@ show the previously marked points."
         socket-path (.. :/tmp/mpv-ytpb-socket- (utils.getpid))
         global-args (table.concat [:--no-config :--debug] " ")
         args (table.concat [:--ipc-server socket-path stream-url-or-id] " ")]
-    (set state.current-stream-id stream-url-or-id)
+    (set state.stream-id stream-url-or-id)
     (mp.set_property :input-ipc-server socket-path)
     (let [command [:ytpb-mpv global-args :listen args "&"]]
       (set state.socket-path socket-path)

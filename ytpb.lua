@@ -315,7 +315,7 @@ package.preload["picker"] = package.preload["picker"] or function(...)
 end
 picker = require("picker")
 local theme = {["main-menu-color"] = "ffffff", ["main-menu-font-size"] = 18, ["mark-mode-color"] = "ffffff", ["mark-mode-font-size"] = 28, ["clock-color"] = "ffffff", ["clock-font-size"] = 32}
-local state = {["current-stream-id"] = nil, ["current-mpd-path"] = nil, ["current-start-time"] = nil, ["main-overlay"] = nil, ["mark-overlay"] = nil, ["marked-points"] = {}, ["current-mark"] = nil, ["clock-overlay"] = nil, ["clock-timer"] = nil, ["activated?"] = false, ["mark-mode-enabled?"] = false}
+local state = {["stream-id"] = nil, ["current-mpd-path"] = nil, ["current-start-time"] = nil, ["main-overlay"] = nil, ["mark-overlay"] = nil, ["marked-points"] = {}, ["current-mark"] = nil, ["clock-overlay"] = nil, ["clock-timer"] = nil, ["activated?"] = false, ["mark-mode-enabled?"] = false}
 local socket_path = nil
 local ytpb_mpv_handle = nil
 local settings = {["seek-offset"] = 3600, ["utc-offset"] = nil}
@@ -825,7 +825,7 @@ local function take_screenshot_key_handler()
   local cur_time_pos = mp.get_property_native("time-pos")
   local cur_timestamp = (state["current-start-time"] + cur_time_pos)
   local date_time_part = os.date("!%Y%m%d-%H%M%S", cur_timestamp)
-  local path = string.format("%s-%s.jpg", state["current-stream-id"], date_time_part)
+  local path = string.format("%s-%s.jpg", state["stream-id"], date_time_part)
   return mp.commandv("osd-msg", "screenshot-to-file", path)
 end
 local function toggle_clock_key_handler()
@@ -928,7 +928,7 @@ local function run_hook(ytpb_url)
   local socket_path0 = ("/tmp/mpv-ytpb-socket-" .. utils.getpid())
   local global_args = table.concat({"--no-config", "--debug"}, " ")
   local args = table.concat({"--ipc-server", socket_path0, stream_url_or_id}, " ")
-  state["current-stream-id"] = stream_url_or_id
+  state["stream-id"] = stream_url_or_id
   mp.set_property("input-ipc-server", socket_path0)
   local command = {"ytpb-mpv", global_args, "listen", args, "&"}
   state["socket-path"] = socket_path0
